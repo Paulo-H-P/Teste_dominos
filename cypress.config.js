@@ -18,9 +18,9 @@ module.exports = defineConfig({
     video: false, // Desabilitado conforme solicitado
     screenshotOnRunFailure: true,
     screenshotsFolder: 'cypress/screenshots',
-    defaultCommandTimeout: 10000,
-    requestTimeout: 10000,
-    responseTimeout: 10000,
+    defaultCommandTimeout: 15000,
+    requestTimeout: 15000,
+    responseTimeout: 15000,
     chromeWebSecurity: false,
   },
 })

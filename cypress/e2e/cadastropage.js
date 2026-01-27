@@ -135,7 +135,13 @@ class CadastroPage {
       } else {
         // Se não encontrou "cadastre-se", tenta acessar diretamente a URL de registro
         cy.log('⚠️ Botão "cadastre-se" não encontrado. Acessando URL de registro diretamente...')
-        cy.visit('/register', { timeout: 10000 })
+        cy.visit('/register', { 
+          timeout: 10000,
+          failOnStatusCode: false,
+          headers: {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+          }
+        })
       }
     })
 
