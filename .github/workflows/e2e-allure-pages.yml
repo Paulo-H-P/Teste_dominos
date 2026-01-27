@@ -45,7 +45,7 @@ jobs:
         shell: bash
         run: |
           if [ -d "allure-results" ]; then
-            npx allure generate allure-results --clean -o allure-report
+            npm run allure:generate
           else
             mkdir -p allure-report
             echo "<h1>No allure-results generated</h1>" > allure-report/index.html
