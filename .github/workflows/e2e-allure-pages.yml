@@ -1,6 +1,9 @@
 name: E2E Tests - Allure Report to GitHub Pages
 
 on:
+  push:
+    branches:
+      - main
   schedule:
     # Executa a cada 10 minutos
     - cron: '*/10 * * * *'
