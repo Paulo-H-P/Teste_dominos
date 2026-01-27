@@ -45,12 +45,34 @@ jobs:
         if: always()
         shell: bash
         run: |
-          if [ -d "allure-results" ]; then
-            npm run allure:generate
+          if [ -d "allure-results" ] && [ "$(ls -A allure-results 2>/dev/null)" ]; then
+            echo "Generating Allure report from allure-results..."
+            npx allure-commandline generate allure-results --clean -o allure-report || {
+              echo "Error generating Allure report. Creating fallback..."
+              mkdir -p allure-report
+              echo "<!DOCTYPE html><html><head><title>Allure Report Error</title></head><body><h1>Error generating Allure report</h1><p>Failed to generate report from allure-results.</p></body></html>" > allure-report/index.html
+            }
+            echo "Allure report generated successfully"
           else
+            echo "No allure-results found or directory is empty. Creating placeholder..."
             mkdir -p allure-report
-            echo "<h1>No allure-results generated</h1>" > allure-report/index.html
+            echo "<!DOCTYPE html><html><head><title>No Test Results</title></head><body><h1>No allure-results generated</h1><p>No test results were found to generate the report.</p></body></html>" > allure-report/index.html
           fi
+
+      - name: Verify report directory
+        if: always()
+        shell: bash
+        run: |
+          if [ ! -d "allure-report" ]; then
+            echo "Error: allure-report directory does not exist"
+            exit 1
+          fi
+          if [ ! -f "allure-report/index.html" ]; then
+            echo "Warning: allure-report/index.html not found. Creating it..."
+            echo "<!DOCTYPE html><html><head><title>Allure Report</title></head><body><h1>Allure Report</h1></body></html>" > allure-report/index.html
+          fi
+          echo "Report directory verified. Files:"
+          ls -la allure-report/ | head -10
 
       - name: Upload Allure report artifact
         if: always()
@@ -59,6 +81,7 @@ jobs:
           name: allure-report
           path: allure-report/
           retention-days: 30
+          if-no-files-found: warn
 
       - name: Deploy to GitHub Pages
         if: always()
@@ -68,6 +91,7 @@ jobs:
           publish_dir: ./allure-report
           publish_branch: gh-pages
           force_orphan: true
+          keep_files: false
 
       - name: Fail job if Cypress tests failed
         if: steps.cypress.outputs.exit_code != '0'
