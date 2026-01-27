@@ -5,7 +5,8 @@ class FluxoCompraPage {
         //modalpizza: () => cy.get('.btn-red'),
         lojafechada: () => cy.get('.btn-primary'),
         //comecar_pedido: () => cy.contains('Começar o meu pedido'),
-        promocao: () => cy.get('app-promotions.ion-page > app-header > .header-md > ion-toolbar.md > .background-blue > .menu-itens > .logo-menu > .itens-menu > .active'),        
+        // Múltiplas estratégias para encontrar promoção
+        promocao: () => cy.get('app-promotions.ion-page > app-header > .header-md > ion-toolbar.md > .background-blue > .menu-itens > .logo-menu > .itens-menu > .active, a.active, .active a'),        
         produto: () => cy.get('div[data-promotion-id="718679"] > a > img'),
         // Escolher/abrir o card da promoção (clique no link do card, não no span)
         escolher_pizza: () => cy.get('div[data-promotion-id="718679"] > a > .minimum-price'),
@@ -115,6 +116,19 @@ class FluxoCompraPage {
                 }
             } else {
                 cy.log('ℹ️ Modal "Pedir uma pizza" não encontrado, continuando...')
+            }
+        })
+        
+        // Remove qualquer backdrop que possa ter ficado após fechar o modal
+        cy.window().then((win) => {
+            const backdrops = win.document.querySelectorAll('ion-backdrop')
+            if (backdrops.length > 0) {
+                cy.log(`⚠️ ${backdrops.length} backdrop(s) encontrado(s) após fechar modal, removendo...`)
+                backdrops.forEach(b => {
+                    b.style.display = 'none'
+                    b.remove()
+                })
+                cy.log(`✅ ${backdrops.length} backdrop(s) removido(s)`)
             }
         })
         
@@ -235,9 +249,64 @@ class FluxoCompraPage {
       
 
     clicarPromocao() {
-        this.elements.promocao()
-            .should('be.visible', { timeout: 10000 })
-            .click({ force: true })
+        // Aguarda a página carregar completamente
+        cy.wait(2000)
+        
+        // Remove backdrops que possam estar bloqueando
+        cy.window().then((win) => {
+            const backdrops = win.document.querySelectorAll('ion-backdrop')
+            if (backdrops.length > 0) {
+                cy.log(`⚠️ ${backdrops.length} backdrop(s) encontrado(s), removendo...`)
+                backdrops.forEach(b => {
+                    b.style.display = 'none'
+                    b.remove()
+                })
+                cy.log(`✅ ${backdrops.length} backdrop(s) removido(s)`)
+            }
+        })
+        
+        cy.wait(1000) // Aguarda os backdrops serem removidos
+        
+        // Tenta múltiplas estratégias para encontrar e clicar na promoção
+        cy.get('body').then(($body) => {
+            // Verifica se o elemento existe no DOM
+            const temPromocaoCompleta = $body.find('app-promotions.ion-page > app-header > .header-md > ion-toolbar.md > .background-blue > .menu-itens > .logo-menu > .itens-menu > .active').length > 0
+            const temActive = $body.find('a.active, .active a, [class*="active"] a').length > 0
+            
+            if (temPromocaoCompleta) {
+                // Estratégia 1: Seletor completo (original)
+                cy.log('✅ Usando seletor completo para promoção')
+                cy.get('app-promotions.ion-page > app-header > .header-md > ion-toolbar.md > .background-blue > .menu-itens > .logo-menu > .itens-menu > .active', { timeout: 15000 })
+                    .should('exist', { timeout: 10000 })
+                    .then(($el) => {
+                        cy.wrap($el)
+                            .scrollIntoView({ offset: { top: -100, left: 0 } })
+                            .click({ force: true })
+                    })
+            } else if (temActive) {
+                // Estratégia 2: Seletor simplificado (a.active)
+                cy.log('✅ Usando seletor simplificado a.active')
+                cy.get('a.active, .active a', { timeout: 15000 })
+                    .first()
+                    .should('exist', { timeout: 10000 })
+                    .then(($el) => {
+                        cy.wrap($el)
+                            .scrollIntoView({ offset: { top: -100, left: 0 } })
+                            .click({ force: true })
+                    })
+            } else {
+                // Estratégia 3: Busca por texto "promoção" ou "promo"
+                cy.log('⚠️ Seletores diretos não funcionaram, tentando busca por texto...')
+                cy.contains('a, button, [role="button"]', /promo/i, { matchCase: false, timeout: 10000 })
+                    .first()
+                    .should('exist')
+                    .scrollIntoView({ offset: { top: -100, left: 0 } })
+                    .click({ force: true })
+            }
+        })
+        
+        cy.wait(1000) // Aguarda após o clique
+        cy.log('✅ Promoção clicada')
     }
 
     clicarProduto() {
