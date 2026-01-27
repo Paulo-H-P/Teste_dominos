@@ -17,3 +17,6 @@ npm-debug.log*
 # Sistema
 .DS_Store
 Thumbs.db
+
+# Repositórios aninhados
+acompnhamento_dominos/
