@@ -23,12 +23,7 @@ describe('Fluxo de compra', () => {
     // 1) Acessa o site e mede performance
     allure.step('🌐 Carregamento da página inicial', () => {})
     const tempoInicioVisit = performance.now()
-    cy.visit('/', {
-      failOnStatusCode: false,
-      headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
-      }
-    })
+    cy.visitWithRetry('/')
     cy.url().should('include', 'app.dominos.com.br')
     cy.then(() => {
       const tempoVisit = ((performance.now() - tempoInicioVisit) / 1000).toFixed(2)
