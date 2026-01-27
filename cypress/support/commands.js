@@ -79,22 +79,48 @@ Cypress.Commands.add('medirTempo', (nome, callback, tempoLimiteSegundos = 10) =>
 
 // Comando customizado para visitar página tratando 403
 Cypress.Commands.add('visitWithRetry', (url, options = {}) => {
-  const defaultOptions = {
+  const defaultHeaders = {
+    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+    'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+    'Accept-Language': 'pt-BR,pt;q=0.9,en-US;q=0.8,en;q=0.7',
+    'Accept-Encoding': 'gzip, deflate, br',
+    'Connection': 'keep-alive',
+    'Upgrade-Insecure-Requests': '1'
+  }
+  
+  const visitOptions = {
     failOnStatusCode: false,
-    headers: {
-      'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-      'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
-      'Accept-Language': 'pt-BR,pt;q=0.9,en-US;q=0.8,en;q=0.7',
-      'Accept-Encoding': 'gzip, deflate, br',
-      'Connection': 'keep-alive',
-      'Upgrade-Insecure-Requests': '1'
-    },
+    headers: defaultHeaders,
     timeout: 30000,
     ...options
   }
   
-  // Visita a página com failOnStatusCode: false
-  // Isso permite que o teste continue mesmo com status codes de erro (como 403)
-  // Os headers customizados ajudam a parecer um navegador real
-  return cy.visit(url, defaultOptions)
+  // Primeiro verifica o status code com cy.request
+  return cy.request({
+    url: url,
+    failOnStatusCode: false,
+    headers: visitOptions.headers,
+    timeout: 10000
+  }).then((resp) => {
+    if (resp.status === 403) {
+      cy.log('⚠️ 403 Forbidden detectado no CI - acesso negado pelo servidor')
+      cy.log('ℹ️ O site está bloqueando requisições do GitHub Actions')
+      cy.log('ℹ️ Tentando continuar mesmo assim com cy.visit...')
+      
+      // Tenta visitar mesmo assim, mas com failOnStatusCode: false
+      // Isso permite que o teste continue e tente interagir com a página
+      return cy.visit(url, visitOptions).then(() => {
+        cy.log('✅ Página visitada (mesmo com 403 anterior)')
+        cy.log('⚠️ Algumas funcionalidades podem não funcionar devido ao bloqueio')
+      })
+    } else if (resp.status >= 200 && resp.status < 300) {
+      // Status OK, pode visitar normalmente
+      cy.log(`✅ Status code ${resp.status} - acesso permitido`)
+      return cy.visit(url, visitOptions)
+    } else {
+      // Outro status code (404, 500, etc)
+      cy.log(`⚠️ Status code ${resp.status} recebido, mas tentando visitar mesmo assim`)
+      return cy.visit(url, visitOptions)
+    }
+  })
 })
