@@ -91,6 +91,54 @@ jobs:
           echo "Report directory verified. Files:"
           ls -la allure-report/ | head -10
 
+      - name: Create README for artifact
+        if: always()
+        shell: bash
+        run: |
+          cat > allure-report/README.md << 'EOF'
+          # 📊 Relatório Allure de Testes
+          
+          Este é o relatório HTML gerado pelo Allure Report para os testes E2E executados no GitHub Actions.
+          
+          ## 📖 Como visualizar
+          
+          1. **GitHub Pages (Recomendado):**
+             - Acesse: https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/
+             - O relatório está disponível online e atualizado automaticamente
+          
+          2. **Download do Artifact:**
+             - Baixe o artifact `allure-report` na seção de Artifacts desta execução
+             - Extraia o arquivo ZIP
+             - Abra o arquivo `index.html` em um navegador moderno
+             - **Nota:** Alguns recursos podem não funcionar localmente devido a restrições CORS
+          
+          ## 📋 Informações da Execução
+          
+          - **Commit:** ${{ github.sha }}
+          - **Branch:** ${{ github.ref_name }}
+          - **Workflow:** ${{ github.workflow }}
+          - **Executado em:** ${{ github.run_started_at }}
+          
+          ## 🔍 Estrutura do Relatório
+          
+          - `index.html` - Página principal do relatório
+          - `data/` - Dados dos testes em formato JSON
+          - `widgets/` - Widgets e gráficos do relatório
+          - `history/` - Histórico de execuções anteriores
+          
+          ## ⚠️ Nota Importante
+          
+          Para visualização completa, recomenda-se usar o GitHub Pages ou executar um servidor HTTP local:
+          ```bash
+          # Com Python
+          python -m http.server 8000
+          
+          # Com Node.js
+          npx http-server allure-report -p 8000
+          ```
+          EOF
+          echo "README.md created in allure-report directory"
+
       - name: Upload Allure report artifact
         if: always()
         uses: actions/upload-artifact@v4
@@ -99,6 +147,40 @@ jobs:
           path: allure-report/
           retention-days: 30
           if-no-files-found: warn
+
+      - name: Get GitHub Pages URL
+        if: always()
+        id: pages-url
+        run: |
+          REPO_NAME=$(echo "${{ github.repository }}" | cut -d'/' -f2)
+          USER_NAME=$(echo "${{ github.repository }}" | cut -d'/' -f1)
+          PAGES_URL="https://${USER_NAME}.github.io/${REPO_NAME}/"
+          echo "url=$PAGES_URL" >> $GITHUB_OUTPUT
+          echo "📊 GitHub Pages URL: $PAGES_URL"
+
+      - name: Create workflow summary
+        if: always()
+        run: |
+          echo "## 📊 Relatório Allure de Testes" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### 📈 Status dos Testes" >> $GITHUB_STEP_SUMMARY
+          if [ "${{ steps.cypress.outputs.exit_code }}" == "0" ]; then
+            echo "✅ **Todos os testes passaram com sucesso!**" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "❌ **Alguns testes falharam** (Exit code: ${{ steps.cypress.outputs.exit_code }})" >> $GITHUB_STEP_SUMMARY
+          fi
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### 🔗 Acessar Relatório" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "📄 **GitHub Pages:** [${{ steps.pages-url.outputs.url }}](${{ steps.pages-url.outputs.url }})" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "📦 **Download do Artifact:** Disponível na seção de Artifacts desta execução" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### 📋 Informações" >> $GITHUB_STEP_SUMMARY
+          echo "- **Commit:** \`${{ github.sha }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "- **Branch:** \`${{ github.ref_name }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "- **Workflow:** \`${{ github.workflow }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "- **Executado em:** \`${{ github.event.head_commit.timestamp || github.run_started_at }}\`" >> $GITHUB_STEP_SUMMARY
 
       - name: Deploy to GitHub Pages
         if: always()
