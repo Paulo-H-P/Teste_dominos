@@ -5,51 +5,59 @@ on:
     branches:
       - main
   schedule:
-    # Executa a cada 10 minutos
-    - cron: '*/10 * * * *'
-  workflow_dispatch: # Permite execução manual
+    - cron: "*/10 * * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
 
 jobs:
   e2e-allure:
     runs-on: ubuntu-latest
-    permissions:
-      contents: write
-      pages: write
-      id-token: write
-    
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-      
+
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '22'
-          cache: 'npm'
-      
+          node-version: "22"
+          cache: "npm"
+
       - name: Install dependencies
         run: npm ci
+
       
-      - name: Install Playwright browsers
-        run: npx playwright install --with-deps chromium
-      
+
       - name: Run Cypress tests
         id: cypress
         continue-on-error: true
+        shell: bash
         run: |
+          set +e
           npm run cypress:run
-          echo "exit_code=$?" >> $GITHUB_OUTPUT
-      
+          exit_code=$?
+          echo "exit_code=$exit_code" >> $GITHUB_OUTPUT
+          exit 0
+
       - name: Generate Allure HTML report
         if: always()
+        shell: bash
         run: |
-          npx allure-commandline generate allure-results --clean -o allure-report
-      
+          # evita falhar se não gerou allure-results por algum motivo
+          if [ -d "allure-results" ]; then
+            npx allure-commandline generate allure-results --clean -o allure-report
+          else
+            echo "allure-results folder not found; skipping allure generate"
+            mkdir -p allure-report
+            echo "<h1>No allure-results generated</h1>" > allure-report/index.html
+          fi
+
       - name: Generate Allure PDF
         if: always()
-        run: |
-          node scripts/allure-pdf.js
-      
+        run: node scripts/allure-pdf.js
+
       - name: Upload Allure report artifact
         if: always()
         uses: actions/upload-artifact@v4
@@ -57,18 +65,18 @@ jobs:
           name: allure-report
           path: allure-report/
           retention-days: 30
-      
+
       - name: Deploy to GitHub Pages
         if: always()
         uses: peaceiris/actions-gh-pages@v4
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           publish_dir: ./allure-report
-          destination_dir: ./
+          publish_branch: gh-pages
           force_orphan: true
-      
+
       - name: Fail job if Cypress tests failed
         if: steps.cypress.outputs.exit_code != '0'
         run: |
           echo "Cypress tests failed with exit code ${{ steps.cypress.outputs.exit_code }}"
-          exit ${{ steps.cypress.outputs.exit_code }}
+          exit 1
