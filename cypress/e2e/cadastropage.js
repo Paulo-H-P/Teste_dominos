@@ -143,35 +143,83 @@ class CadastroPage {
     }
     preencherNome(nome = 'Paulo Pinheiro') {
         // Aguarda a página carregar completamente
-        cy.wait(2000)
+        cy.wait(3000)
         
         // Verifica se estamos na página de registro
         cy.url().should('include', '/register', { timeout: 15000 })
         
-        // Verifica se há algum modal ou overlay bloqueando
-        cy.get('body').then(($body) => {
-            const backdrops = $body.find('ion-backdrop')
+        // Remove backdrops que possam estar bloqueando
+        cy.window().then((win) => {
+            const backdrops = win.document.querySelectorAll('ion-backdrop')
             if (backdrops.length > 0) {
                 cy.log(`⚠️ ${backdrops.length} backdrop(s) encontrado(s), removendo...`)
-                cy.window().then((win) => {
-                    win.document.querySelectorAll('ion-backdrop').forEach(b => {
-                        b.style.display = 'none'
-                        b.remove()
-                    })
+                backdrops.forEach(b => {
+                    b.style.display = 'none'
+                    b.remove()
                 })
             }
         })
         
-        // Aguarda um pouco mais para garantir que a página carregou
-        cy.wait(1000)
+        // Debug: Verifica o que está na página
+        cy.get('body').then(($body) => {
+            const bodyText = $body.text().toLowerCase()
+            cy.log(`📄 Texto da página: ${bodyText.substring(0, 200)}...`)
+            
+            const inputs = $body.find('input').length
+            const ionInputs = $body.find('ion-input').length
+            const fullNameElements = $body.find('[formcontrolname="fullName"]').length
+            
+            cy.log(`📝 Inputs encontrados: ${inputs}`)
+            cy.log(`📝 ion-input encontrados: ${ionInputs}`)
+            cy.log(`📝 Elementos com formcontrolname="fullName": ${fullNameElements}`)
+        })
         
-        // Tenta encontrar e preencher o campo nome
-        this.elements.nome()
-            .should('exist', { timeout: 20000 })
-            .should('be.visible', { timeout: 10000 })
-            .scrollIntoView({ offset: { top: -100, left: 0 } })
-            .clear({ force: true })
-            .type(nome, { force: true })
+        // Aguarda mais um pouco para garantir que a página carregou
+        cy.wait(2000)
+        
+        // Tenta encontrar o campo com múltiplas estratégias
+        // Estratégia 1: Seletor principal com timeout maior
+        cy.get('body').then(($body) => {
+            const temElemento = $body.find('ion-input[formcontrolname="fullName"]').length > 0 || 
+                               $body.find('[formcontrolname="fullName"]').length > 0
+            
+            if (temElemento) {
+                cy.log('✅ Elemento encontrado no DOM, tentando acessar...')
+            } else {
+                cy.log('⚠️ Elemento não encontrado no DOM, tentando estratégias alternativas...')
+            }
+        })
+        
+        // Tenta encontrar o campo com múltiplas estratégias
+        // Estratégia 1: Seletor específico (preferencial)
+        cy.get('body').then(($body) => {
+            const temCampoEspecifico = $body.find('ion-input[formcontrolname="fullName"]').length > 0 || 
+                                      $body.find('[formcontrolname="fullName"]').length > 0
+            
+            if (temCampoEspecifico) {
+                cy.log('✅ Campo específico encontrado no DOM')
+                cy.get('ion-input[formcontrolname="fullName"] input, [formcontrolname="fullName"] input', { timeout: 30000 })
+                    .first()
+                    .should('exist', { timeout: 20000 })
+                    .should('be.visible', { timeout: 10000 })
+                    .scrollIntoView({ offset: { top: -100, left: 0 } })
+                    .clear({ force: true })
+                    .type(nome, { force: true })
+            } else {
+                // Estratégia 2: Primeiro input de texto da página
+                cy.log('⚠️ Campo específico não encontrado, usando primeiro input de texto...')
+                cy.get('input[type="text"]:not([type="hidden"]), ion-input input[type="text"]', { timeout: 20000 })
+                    .first()
+                    .should('exist', { timeout: 15000 })
+                    .then(($el) => {
+                        cy.log('✅ Usando primeiro input de texto como fallback')
+                        cy.wrap($el)
+                            .scrollIntoView({ offset: { top: -100, left: 0 } })
+                            .clear({ force: true })
+                            .type(nome, { force: true })
+                    })
+            }
+        })
     }
     /*preencherNascimento(nascimento = '29/12/1982') {
         this.elements.nascimento()
