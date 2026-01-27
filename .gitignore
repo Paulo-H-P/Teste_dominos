@@ -1,0 +1,19 @@
+# Dependências
+node_modules/
+
+# Resultados do Allure
+allure-results/
+allure-report/
+
+# Cypress
+cypress/videos/
+cypress/screenshots/
+cypress/downloads/
+
+# Logs
+*.log
+npm-debug.log*
+
+# Sistema
+.DS_Store
+Thumbs.db

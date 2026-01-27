@@ -1,0 +1,69 @@
+name: E2E Tests - Allure Report to GitHub Pages
+
+on:
+  schedule:
+    # Executa a cada 10 minutos
+    - cron: '*/10 * * * *'
+  workflow_dispatch: # Permite execução manual
+
+jobs:
+  e2e-allure:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+      
+      - name: Install dependencies
+        run: npm ci
+      
+      - name: Run Cypress tests
+        id: cypress
+        continue-on-error: true
+        run: |
+          npm run cypress:run
+          echo "exit_code=$?" >> $GITHUB_OUTPUT
+      
+      - name: Generate Allure HTML report
+        if: always()
+        run: |
+          npx allure generate allure-results --clean -o allure-report
+      
+      - name: Install Playwright Chromium
+        if: always()
+        run: |
+          npx playwright install --with-deps chromium
+      
+      - name: Generate Allure PDF
+        if: always()
+        run: |
+          node scripts/allure-pdf.js
+      
+      - name: Upload Allure report artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: allure-report
+          path: allure-report/
+          retention-days: 30
+      
+      - name: Deploy to GitHub Pages
+        if: always()
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN || secrets.GH_PAGES_TOKEN }}
+          publish_dir: ./allure-report
+          destination_dir: ./
+          force_orphan: true
+      
+      - name: Fail job if Cypress tests failed
+        if: steps.cypress.outputs.exit_code != '0'
+        run: |
+          echo "Cypress tests failed with exit code ${{ steps.cypress.outputs.exit_code }}"
+          exit ${{ steps.cypress.outputs.exit_code }}
