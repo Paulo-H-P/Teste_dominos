@@ -197,10 +197,26 @@ jobs:
         shell: bash
         run: |
           if [ "${{ steps.cypress.outputs.exit_code }}" != "0" ]; then
+            echo "⚠️ ========================================="
             echo "⚠️ Cypress tests failed with exit code ${{ steps.cypress.outputs.exit_code }}"
-            echo "📊 Report has been generated and published to GitHub Pages despite test failures"
-            echo "🔍 Check the Allure report for detailed failure information"
+            echo "⚠️ ========================================="
+            echo ""
+            echo "📊 IMPORTANTE: O relatório foi gerado e publicado com sucesso!"
+            echo "📄 GitHub Pages: ${{ steps.pages-url.outputs.url }}"
+            echo "📦 Artifact: Disponível na seção de Artifacts desta execução"
+            echo ""
+            echo "🔍 Verifique o relatório Allure para detalhes das falhas:"
+            echo "   - Screenshots dos erros"
+            echo "   - Logs detalhados"
+            echo "   - Stack traces"
+            echo ""
+            echo "⚠️ Este workflow falha para indicar que houve problemas nos testes,"
+            echo "   mas o relatório completo está disponível para análise."
             exit 1
           else
-            echo "✅ All Cypress tests passed successfully"
+            echo "✅ ========================================="
+            echo "✅ Todos os testes Cypress passaram com sucesso!"
+            echo "✅ ========================================="
+            echo ""
+            echo "📊 Relatório disponível em: ${{ steps.pages-url.outputs.url }}"
           fi
