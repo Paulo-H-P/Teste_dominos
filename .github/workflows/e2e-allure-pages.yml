@@ -93,8 +93,15 @@ jobs:
           force_orphan: true
           keep_files: false
 
-      - name: Fail job if Cypress tests failed
-        if: steps.cypress.outputs.exit_code != '0'
+      - name: Report test status
+        if: always()
+        shell: bash
         run: |
-          echo "Cypress failed with exit code ${{ steps.cypress.outputs.exit_code }}"
-          exit 1
+          if [ "${{ steps.cypress.outputs.exit_code }}" != "0" ]; then
+            echo "⚠️ Cypress tests failed with exit code ${{ steps.cypress.outputs.exit_code }}"
+            echo "📊 Report has been generated and published to GitHub Pages despite test failures"
+            echo "🔍 Check the Allure report for detailed failure information"
+            exit 1
+          else
+            echo "✅ All Cypress tests passed successfully"
+          fi
