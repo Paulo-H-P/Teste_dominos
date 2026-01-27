@@ -9,6 +9,8 @@ on:
 
 permissions:
   contents: write
+  pages: write
+  id-token: write
 
 jobs:
   e2e-allure:
@@ -43,7 +45,7 @@ jobs:
         shell: bash
         run: |
           if [ -d "allure-results" ]; then
-            npx allure-commandline generate allure-results --clean -o allure-report
+            npx allure generate allure-results --clean -o allure-report
           else
             mkdir -p allure-report
             echo "<h1>No allure-results generated</h1>" > allure-report/index.html
