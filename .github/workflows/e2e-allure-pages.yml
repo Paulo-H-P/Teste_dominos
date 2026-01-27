@@ -28,8 +28,10 @@ jobs:
           cache: 'npm'
       
       - name: Install dependencies
-        run: |
-          npm install || npm ci
+        run: npm ci
+      
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps chromium
       
       - name: Run Cypress tests
         id: cypress
@@ -42,12 +44,6 @@ jobs:
         if: always()
         run: |
           npx allure-commandline generate allure-results --clean -o allure-report
-      
-      - name: Install Playwright Chromium
-        if: always()
-        run: |
-          npm install playwright || true
-          npx playwright install --with-deps chromium
       
       - name: Generate Allure PDF
         if: always()
