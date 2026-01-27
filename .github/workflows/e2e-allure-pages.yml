@@ -35,10 +35,27 @@ jobs:
         continue-on-error: true
         shell: bash
         run: |
-          set +e
+          echo "Starting Cypress tests..."
+          echo "Node version: $(node --version)"
+          echo "NPM version: $(npm --version)"
+          echo "Cypress version: $(npx cypress --version || echo 'Cypress not found')"
+          
+          # Run Cypress and capture exit code
           npm run cypress:run
           exit_code=$?
+          
+          echo "Cypress exit code: $exit_code"
           echo "exit_code=$exit_code" >> $GITHUB_OUTPUT
+          
+          # List allure-results if they exist
+          if [ -d "allure-results" ]; then
+            echo "Allure results found: $(ls -la allure-results | wc -l) files"
+            ls -la allure-results | head -10
+          else
+            echo "Warning: allure-results directory not found"
+          fi
+          
+          # Always exit 0 to continue workflow
           exit 0
 
       - name: Generate Allure HTML report
