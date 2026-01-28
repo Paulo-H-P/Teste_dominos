@@ -142,8 +142,12 @@ describe('Fluxo de compra', () => {
     
     // Checkpoint REAL: garante que está MESMO na tela de cadastro (não só na rota)
     cy.contains(/criar minha conta|cadastro|criar conta/i, { timeout: 30000 }).should('exist')
-    cy.get('ion-input[formcontrolname="fullName"]', { timeout: 30000 }).should('exist')
-    cy.get('ion-input[formcontrolname="fullName"]', { timeout: 30000 }).shadow().find('input').should('exist')
+    cy.get('ion-input[formcontrolname="fullName"]', { timeout: 30000 }).should('be.visible')
+    
+    // Checkpoint: verifica se input existe (sem assumir shadow DOM)
+    cy.get('ion-input[formcontrolname="fullName"]', { timeout: 30000 })
+      .find('input, textarea')
+      .then(($i) => cy.log(`✅ Inputs encontrados no light DOM: ${$i.length}`))
     
     cy.screenshot(`03_register_${numeroExecucao}`)
 

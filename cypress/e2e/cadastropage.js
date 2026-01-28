@@ -16,49 +16,57 @@ class CadastroPage {
       return `${dddAleatorio}9${numero}`
     }
   
-    // helper: digitar dentro de ion-input (Ionic) - com suporte a Shadow DOM
+    // helper: digitar dentro de ion-input (Ionic) - com detecção automática de Shadow DOM
     typeInIonInput(formcontrolname, value, opts = {}) {
       const { timeout = 30000, log = true } = opts
-      const selector = `ion-input[formcontrolname="${formcontrolname}"]`
+      const hostSel = `ion-input[formcontrolname="${formcontrolname}"]`
 
       cy.log(`🔍 Tentando preencher ${formcontrolname}...`)
       
-      // Aguarda o elemento estar visível e estável
-      cy.get(selector, { timeout })
+      cy.get(hostSel, { timeout })
         .should('be.visible')
-        .then(() => cy.log(`✅ ${formcontrolname}: ion-input encontrado e visível`))
         .scrollIntoView({ offset: { top: -120, left: 0 } })
-        .wait(500, { log: false }) // Pequeno wait para garantir que o shadow está montado
-        .then(($el) => {
-          // Verifica se tem shadow root
-          const el = $el[0]
-          const hasShadow = !!el.shadowRoot
-          cy.log(`🔍 ${formcontrolname}: hasShadow = ${hasShadow}`)
-          
-          if (hasShadow) {
-            // Acessa via shadow DOM
-            cy.wrap($el, { log: false })
+        .then(($host) => {
+          const host = $host[0]
+
+          // 1) tenta encontrar input no light DOM primeiro
+          const light = $host.find('input, textarea')
+          if (light.length) {
+            cy.log(`✅ ${formcontrolname}: usando light DOM (${light.length} input(s) encontrado(s))`)
+            cy.wrap(light[0], { log: false })
+              .should('be.enabled')
+              .click({ force: true })
+              .clear({ force: true })
+              .type(value, { force: true, log })
+            return
+          }
+
+          // 2) tenta shadow DOM somente se existir shadowRoot
+          if (host && host.shadowRoot) {
+            cy.log(`✅ ${formcontrolname}: usando shadow DOM`)
+            cy.wrap($host, { log: false })
               .shadow()
               .find('input, textarea', { timeout })
               .first()
               .should('exist')
-              .then(() => cy.log(`✅ ${formcontrolname}: input encontrado dentro do shadow`))
               .should('be.enabled')
               .click({ force: true })
               .clear({ force: true })
               .type(value, { force: true, log })
-          } else {
-            // Fallback: tenta sem shadow (caso raro onde não usa shadow)
-            cy.log(`⚠️ ${formcontrolname}: sem shadow root, tentando acesso direto`)
-            cy.wrap($el, { log: false })
-              .find('input, textarea', { timeout })
-              .first()
-              .should('exist')
-              .should('be.enabled')
-              .click({ force: true })
-              .clear({ force: true })
-              .type(value, { force: true, log })
+            return
           }
+
+          // 3) fallback final: achar input associado por proximidade (estrutura do Ionic pode variar)
+          cy.log(`⚠️ ${formcontrolname}: tentando fallback por proximidade`)
+          cy.wrap($host, { log: false })
+            .parent()
+            .find('input, textarea', { timeout })
+            .first()
+            .should('exist')
+            .should('be.enabled')
+            .click({ force: true })
+            .clear({ force: true })
+            .type(value, { force: true, log })
         })
 
       return cy.wrap(value, { log: false })
@@ -71,14 +79,28 @@ class CadastroPage {
       codeInputs: () => cy.get('code-input input', { timeout: 20000 }),
       // Host do ion-input (para verificações, não para digitação - use typeInIonInput para digitar)
       nomeHost: () => cy.get('ion-input[formcontrolname="fullName"]', { timeout: 30000 }),
-      // Seletor com Shadow DOM para o input de nome (se precisar usar diretamente)
-      nome: () =>
-        cy.get('ion-input[formcontrolname="fullName"]', { timeout: 30000 })
+      // Seletor para o input de nome (detecta shadow ou light DOM automaticamente)
+      // NOTA: Prefira usar typeInIonInput() ao invés deste seletor direto
+      nome: () => {
+        const host = cy.get('ion-input[formcontrolname="fullName"]', { timeout: 30000 })
           .should('be.visible')
           .scrollIntoView({ offset: { top: -120, left: 0 } })
-          .shadow()
-          .find('input, textarea', { timeout: 30000 })
-          .first(),
+        
+        return host.then(($el) => {
+          const el = $el[0]
+          // Tenta light DOM primeiro
+          const light = $el.find('input, textarea')
+          if (light.length) {
+            return cy.wrap(light[0], { log: false })
+          }
+          // Se tem shadow, usa shadow
+          if (el && el.shadowRoot) {
+            return cy.wrap($el, { log: false }).shadow().find('input, textarea', { timeout: 30000 }).first()
+          }
+          // Fallback
+          return cy.wrap($el, { log: false }).parent().find('input, textarea', { timeout: 30000 }).first()
+        })
+      },
     }
   
     clicarCadastrarse() {
