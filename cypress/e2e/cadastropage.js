@@ -71,6 +71,14 @@ class CadastroPage {
       codeInputs: () => cy.get('code-input input', { timeout: 20000 }),
       // Host do ion-input (para verificações, não para digitação - use typeInIonInput para digitar)
       nomeHost: () => cy.get('ion-input[formcontrolname="fullName"]', { timeout: 30000 }),
+      // Seletor com Shadow DOM para o input de nome (se precisar usar diretamente)
+      nome: () =>
+        cy.get('ion-input[formcontrolname="fullName"]', { timeout: 30000 })
+          .should('be.visible')
+          .scrollIntoView({ offset: { top: -120, left: 0 } })
+          .shadow()
+          .find('input, textarea', { timeout: 30000 })
+          .first(),
     }
   
     clicarCadastrarse() {
