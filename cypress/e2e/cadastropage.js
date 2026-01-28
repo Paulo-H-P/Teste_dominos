@@ -43,7 +43,9 @@ class CadastroPage {
           const light = $host.find('input, textarea')
           if (light.length) {
             cy.log(`✅ ${formcontrolname}: usando light DOM (${light.length} input(s) encontrado(s))`)
-            cy.wrap(light[0], { log: false })
+            // Garante que pegamos o primeiro elemento jQuery válido
+            cy.wrap(light.first(), { log: false })
+              .should('exist')
               .should('be.enabled')
               .click({ force: true })
               .clear({ force: true })
@@ -101,7 +103,7 @@ class CadastroPage {
           // Tenta light DOM primeiro
           const light = $el.find('input, textarea')
           if (light.length) {
-            return cy.wrap(light[0], { log: false })
+            return cy.wrap(light.first(), { log: false })
           }
           // Se tem shadow, usa shadow
           if (el && el.shadowRoot) {
@@ -114,7 +116,7 @@ class CadastroPage {
     }
   
     // Detector robusto de campo de nome (aceita múltiplos candidatos)
-    // Retorna ELEMENTO, não string
+    // Retorna ELEMENTO jQuery válido
     findNameField(timeout = 30000) {
       const candidates = [
         'ion-input[formcontrolname="fullName"]',
@@ -127,6 +129,7 @@ class CadastroPage {
         'input[placeholder*="name" i]',
       ]
 
+      // Encontra o primeiro candidato que existe no DOM
       return cy.get('body', { timeout }).then(($b) => {
         const sel = candidates.find(s => $b.find(s).length > 0)
         if (!sel) {
@@ -137,8 +140,11 @@ class CadastroPage {
           throw new Error(`Campo de nome não encontrado. Candidates: ${candidates.join(' | ')}`)
         }
         cy.log(`✅ Campo de nome detectado: ${sel}`)
-        // ✅ Retorna ELEMENTO, não string
-        return cy.get(sel, { timeout })
+        // Retorna o seletor encontrado para usar no próximo passo
+        return sel
+      }).then((sel) => {
+        // ✅ Retorna ELEMENTO jQuery válido usando o seletor encontrado
+        return cy.get(sel, { timeout }).first()
       })
     }
 
@@ -194,6 +200,7 @@ class CadastroPage {
           if (light.length) {
             // Light DOM: garante que é elemento jQuery válido
             cy.wrap(light.first(), { log: false })
+              .should('exist')
               .should('be.enabled')
               .click({ force: true })
               .clear({ force: true })
