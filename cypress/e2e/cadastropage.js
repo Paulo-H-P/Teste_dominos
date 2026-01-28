@@ -16,6 +16,16 @@ class CadastroPage {
       return `${dddAleatorio}9${numero}`
     }
   
+    // Helper: clica de forma segura (aceita selector string OU elemento jQuery)
+    clickSafe(target, opts = { force: true }) {
+      // target pode ser selector string OU jQuery/HTMLElement
+      if (typeof target === 'string') {
+        return cy.get(target, { timeout: 30000 }).first().click(opts)
+      }
+      // se vier jQuery ou HTMLElement
+      return cy.wrap(target, { log: false }).click(opts)
+    }
+
     // helper: digitar dentro de ion-input (Ionic) - com detecção automática de Shadow DOM
     typeInIonInput(formcontrolname, value, opts = {}) {
       const { timeout = 30000, log = true } = opts
@@ -161,8 +171,14 @@ class CadastroPage {
       cy.dismissOverlays()
       
       return this.findNameField().then(($el) => {
+        // Log de diagnóstico: verifica tipo do elemento
+        cy.then(() => {
+          const isJQuery = $el && typeof $el.jquery !== 'undefined'
+          const tag = $el?.prop?.('tagName')?.toLowerCase() || 'unknown'
+          cy.log(`🔍 Preenchendo nome. Tag: ${tag}, isJQuery: ${isJQuery}`)
+        })
+        
         const tag = $el.prop('tagName')?.toLowerCase()
-        cy.log(`🔍 Preenchendo nome. Tag detectada: ${tag}`)
         
         if (tag === 'ion-input') {
           // Se for ion-input, extrai o formcontrolname e usa typeInIonInput
@@ -172,43 +188,41 @@ class CadastroPage {
             return this.typeInIonInput(formcontrolname, nome)
           }
           // Fallback: tenta achar input dentro do ion-input
-          cy.wrap($el, { log: false })
-            .scrollIntoView({ offset: { top: -120, left: 0 } })
-            .then(($host) => {
-              const host = $host[0]
-              // Tenta light DOM primeiro
-              const light = $host.find('input, textarea')
-              if (light.length) {
-                cy.wrap(light[0], { log: false })
-                  .should('be.enabled')
-                  .click({ force: true })
-                  .clear({ force: true })
-                  .type(nome, { force: true })
-                return
-              }
-              // Tenta shadow se existir
-              if (host && host.shadowRoot) {
-                cy.wrap($host, { log: false })
-                  .shadow()
-                  .find('input, textarea', { timeout: 30000 })
-                  .first()
-                  .should('be.enabled')
-                  .click({ force: true })
-                  .clear({ force: true })
-                  .type(nome, { force: true })
-                return
-              }
-            })
-        } else {
-          // Input direto (não ion-input)
-          cy.wrap($el, { log: false })
-            .scrollIntoView({ offset: { top: -120, left: 0 } })
-            .should('be.visible')
-            .should('be.enabled')
-            .click({ force: true })
-            .clear({ force: true })
-            .type(nome, { force: true })
+          const host = $el[0]
+          const light = $el.find('input, textarea')
+          
+          if (light.length) {
+            // Light DOM: garante que é elemento jQuery válido
+            cy.wrap(light.first(), { log: false })
+              .should('be.enabled')
+              .click({ force: true })
+              .clear({ force: true })
+              .type(nome, { force: true })
+            return cy.wrap(nome, { log: false })
+          }
+          
+          // Tenta shadow se existir
+          if (host && host.shadowRoot) {
+            cy.wrap($el, { log: false })
+              .shadow()
+              .find('input, textarea', { timeout: 30000 })
+              .first()
+              .should('be.enabled')
+              .click({ force: true })
+              .clear({ force: true })
+              .type(nome, { force: true })
+            return cy.wrap(nome, { log: false })
+          }
         }
+        
+        // Input direto (não ion-input): garante que é elemento jQuery válido
+        cy.wrap($el.first(), { log: false })
+          .scrollIntoView({ offset: { top: -120, left: 0 } })
+          .should('be.visible')
+          .should('be.enabled')
+          .click({ force: true })
+          .clear({ force: true })
+          .type(nome, { force: true })
         
         return cy.wrap(nome, { log: false })
       })

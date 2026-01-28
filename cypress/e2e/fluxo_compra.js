@@ -46,7 +46,8 @@ class FluxoCompraPage {
             .first()
 
           if (botaoFechar.length > 0) {
-            cy.wrap(botaoFechar).click({ force: true })
+            // Garante que botaoFechar é elemento jQuery válido antes de clicar
+            cy.wrap(botaoFechar.first(), { log: false }).click({ force: true })
             cy.log('✅ Banner de cookies fechado via botão')
           } else {
             // Se não encontrar botão, esconde via JavaScript
