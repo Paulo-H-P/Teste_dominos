@@ -104,6 +104,7 @@ class CadastroPage {
     }
   
     // Detector robusto de campo de nome (aceita múltiplos candidatos)
+    // Retorna ELEMENTO, não string
     findNameField(timeout = 30000) {
       const candidates = [
         'ion-input[formcontrolname="fullName"]',
@@ -126,7 +127,8 @@ class CadastroPage {
           throw new Error(`Campo de nome não encontrado. Candidates: ${candidates.join(' | ')}`)
         }
         cy.log(`✅ Campo de nome detectado: ${sel}`)
-        return cy.wrap(sel, { log: false })
+        // ✅ Retorna ELEMENTO, não string
+        return cy.get(sel, { timeout })
       })
     }
 
@@ -158,24 +160,55 @@ class CadastroPage {
       cy.assertPath('/register')
       cy.dismissOverlays()
       
-      return this.findNameField().then((sel) => {
-        cy.log(`🔍 Preenchendo nome usando seletor: ${sel}`)
+      return this.findNameField().then(($el) => {
+        const tag = $el.prop('tagName')?.toLowerCase()
+        cy.log(`🔍 Preenchendo nome. Tag detectada: ${tag}`)
         
-        if (sel.startsWith('ion-input')) {
+        if (tag === 'ion-input') {
           // Se for ion-input, extrai o formcontrolname e usa typeInIonInput
-          const match = sel.match(/formcontrolname="([^"]+)"/)
-          if (match && match[1]) {
-            return this.typeInIonInput(match[1], nome)
+          const formcontrolname = $el.attr('formcontrolname') || $el.attr('ng-reflect-form-control-name')
+          if (formcontrolname) {
+            cy.log(`✅ Usando typeInIonInput com formcontrolname: ${formcontrolname}`)
+            return this.typeInIonInput(formcontrolname, nome)
           }
+          // Fallback: tenta achar input dentro do ion-input
+          cy.wrap($el, { log: false })
+            .scrollIntoView({ offset: { top: -120, left: 0 } })
+            .then(($host) => {
+              const host = $host[0]
+              // Tenta light DOM primeiro
+              const light = $host.find('input, textarea')
+              if (light.length) {
+                cy.wrap(light[0], { log: false })
+                  .should('be.enabled')
+                  .click({ force: true })
+                  .clear({ force: true })
+                  .type(nome, { force: true })
+                return
+              }
+              // Tenta shadow se existir
+              if (host && host.shadowRoot) {
+                cy.wrap($host, { log: false })
+                  .shadow()
+                  .find('input, textarea', { timeout: 30000 })
+                  .first()
+                  .should('be.enabled')
+                  .click({ force: true })
+                  .clear({ force: true })
+                  .type(nome, { force: true })
+                return
+              }
+            })
+        } else {
+          // Input direto (não ion-input)
+          cy.wrap($el, { log: false })
+            .scrollIntoView({ offset: { top: -120, left: 0 } })
+            .should('be.visible')
+            .should('be.enabled')
+            .click({ force: true })
+            .clear({ force: true })
+            .type(nome, { force: true })
         }
-        
-        // Fallback: input direto (não ion-input)
-        cy.get(sel, { timeout: 30000 })
-          .scrollIntoView({ offset: { top: -120, left: 0 } })
-          .should('be.visible')
-          .click({ force: true })
-          .clear({ force: true })
-          .type(nome, { force: true })
         
         return cy.wrap(nome, { log: false })
       })
