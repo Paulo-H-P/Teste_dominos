@@ -140,7 +140,8 @@ describe('Fluxo de compra', () => {
 
     assertRoute('/register', { timeout: 30000 })
     
-    // Checkpoint REAL: garante que o formulário de cadastro montou antes de preencher
+    // Checkpoint REAL: garante que está MESMO na tela de cadastro (não só na rota)
+    cy.contains(/criar minha conta|cadastro|criar conta/i, { timeout: 30000 }).should('exist')
     cy.get('ion-input[formcontrolname="fullName"]', { timeout: 30000 }).should('be.visible')
     
     cy.screenshot(`03_register_${numeroExecucao}`)
@@ -148,6 +149,17 @@ describe('Fluxo de compra', () => {
     // Preenchimento
     allure.step('✏️ Preencher formulário de cadastro', () => {})
     cy.dismissOverlays()
+
+    // Check rápido: verifica se ion-input existe e se o input dentro do shadow existe
+    cy.get('ion-input[formcontrolname="fullName"]', { timeout: 30000 })
+      .should('exist')
+      .then(() => cy.log('✅ ion-input fullName existe'))
+
+    cy.get('ion-input[formcontrolname="fullName"]', { timeout: 30000 })
+      .shadow()
+      .find('input', { timeout: 30000 })
+      .should('exist')
+      .then(() => cy.log('✅ input dentro do shadow existe'))
 
     CadastroPage.preencherNome()
     CadastroPage.preencherEmail()

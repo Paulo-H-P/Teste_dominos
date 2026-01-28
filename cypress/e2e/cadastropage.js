@@ -16,39 +16,23 @@ class CadastroPage {
       return `${dddAleatorio}9${numero}`
     }
   
-    // helper: digitar dentro de ion-input (Ionic)
+    // helper: digitar dentro de ion-input (Ionic) - com suporte a Shadow DOM
     typeInIonInput(formcontrolname, value, opts = {}) {
-        const { timeout = 30000, log = true } = opts
-  const selector = `ion-input[formcontrolname="${formcontrolname}"]`
+      const { timeout = 30000, log = true } = opts
+      const selector = `ion-input[formcontrolname="${formcontrolname}"]`
 
-  cy.get(selector, { timeout })
-    .should('be.visible')
-    .scrollIntoView({ offset: { top: -120, left: 0 } })
-    .then(($host) => {
-      const el = $host[0]
-      const hasShadow = !!el.shadowRoot
+      cy.get(selector, { timeout })
+        .should('be.visible')
+        .scrollIntoView({ offset: { top: -120, left: 0 } })
+        .shadow()
+        .find('input, textarea', { timeout })
+        .first()
+        .should('be.enabled')
+        .click({ force: true })
+        .clear({ force: true })
+        .type(value, { force: true, log })
 
-      if (hasShadow) {
-        cy.wrap($host, { log: false })
-          .shadow()
-          .find('input, textarea', { timeout })
-          .first()
-          .should('be.enabled')
-          .click({ force: true })
-          .clear({ force: true })
-          .type(value, { force: true, log })
-      } else {
-        cy.wrap($host, { log: false })
-          .find('input, textarea', { timeout })
-          .first()
-          .should('be.enabled')
-          .click({ force: true })
-          .clear({ force: true })
-          .type(value, { force: true, log })
-      }
-    })
-
-  return cy.wrap(value, { log: false })
+      return cy.wrap(value, { log: false })
     }
   
     elements = {
