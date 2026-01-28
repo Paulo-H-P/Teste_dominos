@@ -19,37 +19,36 @@ class CadastroPage {
     // helper: digitar dentro de ion-input (Ionic)
     typeInIonInput(formcontrolname, value, opts = {}) {
         const { timeout = 30000, log = true } = opts
-        const host = `ion-input[formcontrolname="${formcontrolname}"]`
-      
-        cy.get(host, { timeout })
-          .should('be.visible')
-          .scrollIntoView({ offset: { top: -120, left: 0 } })
-          .then(($el) => {
-            // 1) tenta achar input no Shadow DOM (Ionic padrão)
-            const hasShadow = !!$el[0].shadowRoot
-      
-            if (hasShadow) {
-              cy.wrap($el, { log: false })
-                .shadow()
-                .find('input, textarea', { timeout })
-                .first()
-                .should('be.enabled')
-                .click({ force: true })
-                .clear({ force: true })
-                .type(value, { force: true, log })
-            } else {
-              // 2) fallback: caso o input esteja no light DOM (casos raros)
-              cy.wrap($el, { log: false })
-                .find('input, textarea', { timeout })
-                .first()
-                .should('be.enabled')
-                .click({ force: true })
-                .clear({ force: true })
-                .type(value, { force: true, log })
-            }
-          })
-      
-        return cy.wrap(value, { log: false })
+  const selector = `ion-input[formcontrolname="${formcontrolname}"]`
+
+  cy.get(selector, { timeout })
+    .should('be.visible')
+    .scrollIntoView({ offset: { top: -120, left: 0 } })
+    .then(($host) => {
+      const el = $host[0]
+      const hasShadow = !!el.shadowRoot
+
+      if (hasShadow) {
+        cy.wrap($host, { log: false })
+          .shadow()
+          .find('input, textarea', { timeout })
+          .first()
+          .should('be.enabled')
+          .click({ force: true })
+          .clear({ force: true })
+          .type(value, { force: true, log })
+      } else {
+        cy.wrap($host, { log: false })
+          .find('input, textarea', { timeout })
+          .first()
+          .should('be.enabled')
+          .click({ force: true })
+          .clear({ force: true })
+          .type(value, { force: true, log })
+      }
+    })
+
+  return cy.wrap(value, { log: false })
     }
   
     elements = {

@@ -7,6 +7,7 @@ module.exports = defineConfig({
       allureCypress(on, config, { resultsDir: 'allure-results' })
       return config
     },
+    
 
     baseUrl: process.env.CYPRESS_BASE_URL || 'https://app.dominos.com.br',
 

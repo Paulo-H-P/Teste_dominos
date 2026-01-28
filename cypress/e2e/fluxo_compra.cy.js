@@ -127,7 +127,7 @@ describe('Fluxo de compra', () => {
     cy.location('pathname', { timeout: 30000 }).then((path) => {
       if (!path.includes('/register')) {
         cy.log('↪️ Não caiu em /register via UI. Forçando navegação.')
-        cy.visitWithRetry('/register', {
+        return cy.visitWithRetry('/register', {
           timeout: 60000,
           retries: 2,
           validate: () => {
@@ -139,6 +139,10 @@ describe('Fluxo de compra', () => {
     })
 
     assertRoute('/register', { timeout: 30000 })
+    
+    // Checkpoint REAL: garante que o formulário de cadastro montou antes de preencher
+    cy.get('ion-input[formcontrolname="fullName"]', { timeout: 30000 }).should('be.visible')
+    
     cy.screenshot(`03_register_${numeroExecucao}`)
 
     // Preenchimento
