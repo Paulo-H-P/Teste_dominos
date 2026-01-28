@@ -21,16 +21,45 @@ class CadastroPage {
       const { timeout = 30000, log = true } = opts
       const selector = `ion-input[formcontrolname="${formcontrolname}"]`
 
+      cy.log(`🔍 Tentando preencher ${formcontrolname}...`)
+      
+      // Aguarda o elemento estar visível e estável
       cy.get(selector, { timeout })
         .should('be.visible')
+        .then(() => cy.log(`✅ ${formcontrolname}: ion-input encontrado e visível`))
         .scrollIntoView({ offset: { top: -120, left: 0 } })
-        .shadow()
-        .find('input, textarea', { timeout })
-        .first()
-        .should('be.enabled')
-        .click({ force: true })
-        .clear({ force: true })
-        .type(value, { force: true, log })
+        .wait(500, { log: false }) // Pequeno wait para garantir que o shadow está montado
+        .then(($el) => {
+          // Verifica se tem shadow root
+          const el = $el[0]
+          const hasShadow = !!el.shadowRoot
+          cy.log(`🔍 ${formcontrolname}: hasShadow = ${hasShadow}`)
+          
+          if (hasShadow) {
+            // Acessa via shadow DOM
+            cy.wrap($el, { log: false })
+              .shadow()
+              .find('input, textarea', { timeout })
+              .first()
+              .should('exist')
+              .then(() => cy.log(`✅ ${formcontrolname}: input encontrado dentro do shadow`))
+              .should('be.enabled')
+              .click({ force: true })
+              .clear({ force: true })
+              .type(value, { force: true, log })
+          } else {
+            // Fallback: tenta sem shadow (caso raro onde não usa shadow)
+            cy.log(`⚠️ ${formcontrolname}: sem shadow root, tentando acesso direto`)
+            cy.wrap($el, { log: false })
+              .find('input, textarea', { timeout })
+              .first()
+              .should('exist')
+              .should('be.enabled')
+              .click({ force: true })
+              .clear({ force: true })
+              .type(value, { force: true, log })
+          }
+        })
 
       return cy.wrap(value, { log: false })
     }
