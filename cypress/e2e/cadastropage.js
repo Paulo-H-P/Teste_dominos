@@ -69,6 +69,8 @@ class CadastroPage {
       checkBoxTermos: () => cy.get('ion-checkbox', { timeout: 15000 }).first(),
       criarContaBtn: () => cy.contains('button, ion-button, a, [role="button"]', /criar minha conta/i, { timeout: 20000 }),
       codeInputs: () => cy.get('code-input input', { timeout: 20000 }),
+      // Host do ion-input (para verificações, não para digitação - use typeInIonInput para digitar)
+      nomeHost: () => cy.get('ion-input[formcontrolname="fullName"]', { timeout: 30000 }),
     }
   
     clicarCadastrarse() {
