@@ -137,25 +137,37 @@ class CadastroPage {
           return cy.get(sel, { timeout }).first()
         }
         
-        // Fallback: busca por placeholder usando filtro JavaScript (case-insensitive)
+        // Fallback 1: busca por placeholder usando filtro JavaScript (case-insensitive)
         cy.log('⚠️ Candidatos diretos não encontrados, tentando fallback por placeholder...')
-        return cy.get('input[placeholder]', { timeout: 10000 })
-          .filter((_, el) => {
-            const p = el.getAttribute('placeholder') || ''
-            return /nome/i.test(p) || /name/i.test(p)
-          })
-          .first()
-          .then(($found) => {
-            if ($found.length > 0) {
-              cy.log(`✅ Campo de nome encontrado via placeholder: ${$found.attr('placeholder')}`)
-              return cy.wrap($found.first(), { log: false })
+        return cy.get('body', { timeout: 5000 }).then(($body) => {
+          const inputsWithPlaceholder = $body.find('input[placeholder]')
+          if (inputsWithPlaceholder.length > 0) {
+            // Tenta encontrar por placeholder usando filtro
+            const found = inputsWithPlaceholder.filter((_, el) => {
+              const p = el.getAttribute('placeholder') || ''
+              return /nome/i.test(p) || /name/i.test(p)
+            })
+            
+            if (found.length > 0) {
+              cy.log(`✅ Campo de nome encontrado via placeholder: ${found.first().attr('placeholder')}`)
+              return cy.wrap(found.first(), { log: false })
             }
-            // Se ainda não encontrou, faz dump pra diagnóstico
-            cy.screenshot('DEBUG_nome_nao_encontrado')
-            cy.log('❌ Campo de nome não encontrado. HTML snippet:')
-            cy.document().its('body').invoke('innerText').then(t => cy.log(t.slice(0, 1500)))
-            throw new Error(`Campo de nome não encontrado. Candidates tentados: ${candidates.join(' | ')}`)
-          })
+          }
+          
+          // Fallback 2: tenta encontrar qualquer input de texto visível como último recurso
+          cy.log('⚠️ Placeholder não encontrado, tentando último recurso: qualquer input de texto...')
+          const textInputs = $body.find('input[type="text"], input:not([type]), ion-input')
+          if (textInputs.length > 0) {
+            cy.log(`⚠️ Usando primeiro input de texto encontrado como fallback (${textInputs.length} encontrados)`)
+            return cy.wrap(textInputs.first(), { log: false })
+          }
+          
+          // Se ainda não encontrou, faz dump pra diagnóstico
+          cy.screenshot('DEBUG_nome_nao_encontrado')
+          cy.log('❌ Campo de nome não encontrado. HTML snippet:')
+          cy.document().its('body').invoke('innerText').then(t => cy.log(t.slice(0, 1500)))
+          throw new Error(`Campo de nome não encontrado. Candidates tentados: ${candidates.join(' | ')}`)
+        })
       })
     }
 
