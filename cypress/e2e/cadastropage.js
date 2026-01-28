@@ -95,8 +95,11 @@ class CadastroPage {
     }
   
     preencherNome(nome = 'Paulo Pinheiro') {
+      // IMPORTANTE: Usa typeInIonInput que já lida com Shadow DOM
+      // NÃO usar elements.nome() ou seletores diretos de input
       cy.assertPath('/register')
       cy.dismissOverlays()
+      cy.log('🔍 Iniciando preenchimento do nome via typeInIonInput (Shadow DOM)')
       return this.typeInIonInput('fullName', nome)
     }
   
