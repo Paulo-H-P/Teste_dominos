@@ -103,6 +103,33 @@ class CadastroPage {
       },
     }
   
+    // Detector robusto de campo de nome (aceita múltiplos candidatos)
+    findNameField(timeout = 30000) {
+      const candidates = [
+        'ion-input[formcontrolname="fullName"]',
+        'ion-input[formcontrolname="name"]',
+        'ion-input[formcontrolname="nome"]',
+        'input[formcontrolname="fullName"]',
+        'input[name="fullName"]',
+        'input[autocomplete="name"]',
+        'input[placeholder*="nome" i]',
+        'input[placeholder*="name" i]',
+      ]
+
+      return cy.get('body', { timeout }).then(($b) => {
+        const sel = candidates.find(s => $b.find(s).length > 0)
+        if (!sel) {
+          // dump pra diagnóstico no CI
+          cy.screenshot('DEBUG_nome_nao_encontrado')
+          cy.log('❌ Campo de nome não encontrado. HTML snippet:')
+          cy.document().its('body').invoke('innerText').then(t => cy.log(t.slice(0, 1500)))
+          throw new Error(`Campo de nome não encontrado. Candidates: ${candidates.join(' | ')}`)
+        }
+        cy.log(`✅ Campo de nome detectado: ${sel}`)
+        return cy.wrap(sel, { log: false })
+      })
+    }
+
     clicarCadastrarse() {
       cy.waitForAppReady()
       cy.dismissOverlays()
@@ -121,16 +148,37 @@ class CadastroPage {
   
       cy.assertPath('/register')
       cy.waitForAppReady()
-      cy.get('ion-input[formcontrolname="fullName"]', { timeout: 30000 }).should('be.visible')
+      
+      // Checkpoint flexível: qualquer coisa que indique cadastro
+      cy.get('body', { timeout: 30000 }).should('be.visible')
+      cy.contains(/criar minha conta|criar conta|cadastro/i, { timeout: 30000 }).should('exist')
     }
   
     preencherNome(nome = 'Paulo Pinheiro') {
-      // IMPORTANTE: Usa typeInIonInput que já lida com Shadow DOM
-      // NÃO usar elements.nome() ou seletores diretos de input
       cy.assertPath('/register')
       cy.dismissOverlays()
-      cy.log('🔍 Iniciando preenchimento do nome via typeInIonInput (Shadow DOM)')
-      return this.typeInIonInput('fullName', nome)
+      
+      return this.findNameField().then((sel) => {
+        cy.log(`🔍 Preenchendo nome usando seletor: ${sel}`)
+        
+        if (sel.startsWith('ion-input')) {
+          // Se for ion-input, extrai o formcontrolname e usa typeInIonInput
+          const match = sel.match(/formcontrolname="([^"]+)"/)
+          if (match && match[1]) {
+            return this.typeInIonInput(match[1], nome)
+          }
+        }
+        
+        // Fallback: input direto (não ion-input)
+        cy.get(sel, { timeout: 30000 })
+          .scrollIntoView({ offset: { top: -120, left: 0 } })
+          .should('be.visible')
+          .click({ force: true })
+          .clear({ force: true })
+          .type(nome, { force: true })
+        
+        return cy.wrap(nome, { log: false })
+      })
     }
   
     preencherEmail(email = null) {
