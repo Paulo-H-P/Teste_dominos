@@ -118,6 +118,7 @@ class CadastroPage {
     // Detector robusto de campo de nome (aceita múltiplos candidatos)
     // Retorna ELEMENTO jQuery válido
     findNameField(timeout = 30000) {
+      // Candidates seguros (CSS compatível, sem modificadores case-insensitive)
       const candidates = [
         'ion-input[formcontrolname="fullName"]',
         'ion-input[formcontrolname="name"]',
@@ -125,26 +126,36 @@ class CadastroPage {
         'input[formcontrolname="fullName"]',
         'input[name="fullName"]',
         'input[autocomplete="name"]',
-        'input[placeholder*="nome" i]',
-        'input[placeholder*="name" i]',
       ]
 
       // Encontra o primeiro candidato que existe no DOM
       return cy.get('body', { timeout }).then(($b) => {
         const sel = candidates.find(s => $b.find(s).length > 0)
-        if (!sel) {
-          // dump pra diagnóstico no CI
-          cy.screenshot('DEBUG_nome_nao_encontrado')
-          cy.log('❌ Campo de nome não encontrado. HTML snippet:')
-          cy.document().its('body').invoke('innerText').then(t => cy.log(t.slice(0, 1500)))
-          throw new Error(`Campo de nome não encontrado. Candidates: ${candidates.join(' | ')}`)
+        if (sel) {
+          cy.log(`✅ Campo de nome detectado: ${sel}`)
+          // ✅ Retorna ELEMENTO jQuery válido usando o seletor encontrado
+          return cy.get(sel, { timeout }).first()
         }
-        cy.log(`✅ Campo de nome detectado: ${sel}`)
-        // Retorna o seletor encontrado para usar no próximo passo
-        return sel
-      }).then((sel) => {
-        // ✅ Retorna ELEMENTO jQuery válido usando o seletor encontrado
-        return cy.get(sel, { timeout }).first()
+        
+        // Fallback: busca por placeholder usando filtro JavaScript (case-insensitive)
+        cy.log('⚠️ Candidatos diretos não encontrados, tentando fallback por placeholder...')
+        return cy.get('input[placeholder]', { timeout: 10000 })
+          .filter((_, el) => {
+            const p = el.getAttribute('placeholder') || ''
+            return /nome/i.test(p) || /name/i.test(p)
+          })
+          .first()
+          .then(($found) => {
+            if ($found.length > 0) {
+              cy.log(`✅ Campo de nome encontrado via placeholder: ${$found.attr('placeholder')}`)
+              return cy.wrap($found.first(), { log: false })
+            }
+            // Se ainda não encontrou, faz dump pra diagnóstico
+            cy.screenshot('DEBUG_nome_nao_encontrado')
+            cy.log('❌ Campo de nome não encontrado. HTML snippet:')
+            cy.document().its('body').invoke('innerText').then(t => cy.log(t.slice(0, 1500)))
+            throw new Error(`Campo de nome não encontrado. Candidates tentados: ${candidates.join(' | ')}`)
+          })
       })
     }
 
