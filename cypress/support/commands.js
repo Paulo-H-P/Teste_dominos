@@ -155,8 +155,8 @@ Cypress.Commands.add('waitForAppReady', (opts = {}) => {
         cy.log(`🚫 Bloqueio detectado - HTML: ${html.substring(0, 200)}...`)
         throw new Error('Página fora do app (bloqueio/erro). Ver screenshot BLOQUEIO_OU_ERRO_FORA_DO_APP')
       }
-    }
-  })
+    })
+  }
 
   // 4) Dupla RAF ajuda MUITO em CI (Ionic) - com timeout de segurança
   cy.window({ timeout: 30000 }).then((win) => {
