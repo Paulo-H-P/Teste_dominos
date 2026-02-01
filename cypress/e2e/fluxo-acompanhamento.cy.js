@@ -1,4 +1,4 @@
-import HomeCadastrarPage from '../Pages/Home_cadastrar'
+import HomeCadastrarPage from './Pages/home_cadastrar'
 import CadastrarPage from './Pages/cadastrar'
 
 describe('Home → Cadastro', () => {
