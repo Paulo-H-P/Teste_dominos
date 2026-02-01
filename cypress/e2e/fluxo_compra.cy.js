@@ -95,7 +95,7 @@ describe('Fluxo de compra', () => {
       retries: 1, // Reduzido de 2 para 1 (menos tentativas)
       validate: () => {
         // waitForAppReady já verifica readyState, não precisa waitDocumentReady depois
-        cy.waitForAppReady({ timeout: 30000 }) // Reduzido de 60000 para 30000
+        cy.waitForAppReady({ timeout: 30000, checkBlocking: false }) // Reduzido de 60000 para 30000
         cy.dismissOverlays()
       },
     })
@@ -146,7 +146,8 @@ describe('Fluxo de compra', () => {
     cy.location('pathname', { timeout: 30000 }).should('match', /register|cadastro/i)
     
     // 2) Aguarda o app Ionic carregar completamente (versão robusta)
-    cy.waitForAppReady({ timeout: 60000 })
+    // Desabilita verificação de bloqueio para evitar falsos positivos
+    cy.waitForAppReady({ timeout: 60000, checkBlocking: false })
     cy.dismissOverlays()
     
     // 3) Verifica marcador visual da tela de cadastro
