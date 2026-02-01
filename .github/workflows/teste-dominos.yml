@@ -237,6 +237,26 @@ jobs:
           echo ""
           echo "🔗 URL esperada: ${{ steps.pages-url.outputs.url }}"
 
+      - name: Notify Telegram (E2E status)
+        if: always()
+        shell: bash
+        run: |
+          EXIT_CODE="${{ steps.cypress.outputs.exit_code }}"
+          if [ -z "$EXIT_CODE" ]; then EXIT_CODE=1; fi
+
+          if [ "$EXIT_CODE" = "0" ]; then
+            STATUS="✅ PASSOU"
+          else
+            STATUS="❌ FALHOU (exit: $EXIT_CODE)"
+          fi
+
+          MESSAGE="E2E Dominos - ${STATUS}"$'\n\n'"Repo: ${{ github.repository }}"$'\n'"Branch: ${{ github.ref_name }}"$'\n'"Commit: ${{ github.sha }}"$'\n'"Relatório: ${{ steps.pages-url.outputs.url }}"$'\n'"Run: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+
+          curl -sS -X POST "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMessage" \
+            -d "chat_id=${{ secrets.TELEGRAM_CHAT_ID }}" \
+            --data-urlencode "text=${MESSAGE}" \
+            -d "disable_web_page_preview=true"
+
       - name: Report test status
         if: always()
         shell: bash
