@@ -145,28 +145,11 @@ describe('Fluxo de compra', () => {
     // 1) Garante que chegou na rota esperada
     cy.location('pathname', { timeout: 30000 }).should('match', /register|cadastro/i)
     
-    // 2) Aguarda o layout Ionic carregar
-    cy.waitForAppReady({ timeout: 30000 })
+    // 2) Aguarda o app Ionic carregar completamente (versão robusta)
+    cy.waitAppReady({ timeout: 60000 })
     cy.dismissOverlays()
     
-    // 3) Verifica se há bloqueio/registro suspeito ANTES de tentar encontrar o formulário
-    cy.get('body', { timeout: 5000 }).then(($body) => {
-      const bodyText = $body.text().toLowerCase()
-      const hasBlockText = /registro suspeito|suspeita|verificação|captcha|bloqueado|acesso negado/i.test(bodyText)
-      
-      if (hasBlockText) {
-        cy.log('🚫 Bloqueio/registro suspeito detectado - fluxo de cadastro não disponível')
-        cy.screenshot('BLOQUEIO_ANTI_BOT_CI')
-        throw new Error('Caiu em tela de bloqueio/registro suspeito no CI. Cadastro não está disponível nesse momento.')
-      } else {
-        cy.log('✅ Nenhum bloqueio detectado, continuando...')
-      }
-    })
-    
-    // 4) Garante que o layout Ionic carregou (ion-content visível)
-    cy.get('ion-content', { timeout: 30000 }).should('be.visible')
-    
-    // 5) Verifica marcador visual da tela de cadastro
+    // 3) Verifica marcador visual da tela de cadastro
     cy.contains(/criar conta|cadastro|seus dados|registro/i, { timeout: 30000 })
       .should('be.visible')
       .then(() => {

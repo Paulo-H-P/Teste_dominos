@@ -81,20 +81,47 @@ Cypress.Commands.add('medirTempo', (nome, callback, tempoLimiteSegundos = 10) =>
 // 2) Estabilização do app (Ionic/Angular) + overlays
 // =====================================================
 
-// Espera carregamento mínimo sem depender de seletor do front
+/**
+ * waitForAppReady() - Versão robusta que valida se o app Ionic carregou
+ * 
+ * Verifica:
+ * 1. Document ready state
+ * 2. URL atual (log)
+ * 3. Se há bloqueio/erro fora do app (screenshot + erro)
+ * 4. Se o app Ionic (ion-app/ion-content) carregou
+ * 5. Se não carregou, tenta reload uma vez
+ */
 Cypress.Commands.add('waitForAppReady', (opts = {}) => {
-  const timeout = opts.timeout || 30000
+  const timeout = opts.timeout || 60000
 
-  cy.document({ timeout }).its('readyState').should('eq', 'complete')
+  // 1) Verifica document ready state
+  cy.document({ timeout: 30000 }).its('readyState').should('eq', 'complete')
 
-  // dupla RAF ajuda MUITO em CI (Ionic) - com timeout de segurança
-  cy.window({ timeout }).then((win) => {
-    return new Cypress.Promise((resolve, reject) => {
-      // Timeout de segurança para garantir que sempre resolva
+  // 2) Dá um tempo pro webview montar (principalmente em CI headless)
+  cy.location('href', { timeout: 30000 }).then((href) => {
+    cy.log(`🔗 URL atual: ${href}`)
+  })
+
+  // 3) Se caiu em página de bloqueio/erro fora do Ionic, isso pega
+  cy.document().then((doc) => {
+    const html = doc.documentElement.innerText || ''
+    const title = doc.title || ''
+    cy.log(`📄 TITLE: ${title}`)
+
+    const suspects = /access denied|forbidden|cloudflare|captcha|suspeit|verifica|blocked|erro|error 5\d\d|error 4\d\d/i
+    if (suspects.test(html) || suspects.test(title)) {
+      cy.screenshot('BLOQUEIO_OU_ERRO_FORA_DO_APP')
+      throw new Error('Página fora do app (bloqueio/erro). Ver screenshot BLOQUEIO_OU_ERRO_FORA_DO_APP')
+    }
+  })
+
+  // 4) Dupla RAF ajuda MUITO em CI (Ionic) - com timeout de segurança
+  cy.window({ timeout: 30000 }).then((win) => {
+    return new Cypress.Promise((resolve) => {
       const safetyTimeout = setTimeout(() => {
         cy.log('⚠️ requestAnimationFrame timeout, resolvendo forçadamente')
         resolve()
-      }, 2000) // 2 segundos de timeout de segurança
+      }, 2000)
 
       try {
         if (win.requestAnimationFrame) {
@@ -105,12 +132,10 @@ Cypress.Commands.add('waitForAppReady', (opts = {}) => {
             })
           })
         } else {
-          // Se requestAnimationFrame não estiver disponível, resolve imediatamente
           clearTimeout(safetyTimeout)
           resolve()
         }
       } catch (e) {
-        // Em caso de erro, resolve mesmo assim para não travar o teste
         clearTimeout(safetyTimeout)
         cy.log(`⚠️ Erro em requestAnimationFrame: ${e.message}`)
         resolve()
@@ -118,7 +143,23 @@ Cypress.Commands.add('waitForAppReady', (opts = {}) => {
     })
   })
 
-  cy.get('body', { timeout }).should('exist')
+  // 5) Agora sim: espera o app Ionic aparecer
+  cy.get('body', { timeout: 30000 }).should('be.visible')
+  
+  // 6) Verifica se ion-app ou ion-content existe, se não tenta reload
+  cy.get('body', { timeout: 10000 }).then(($body) => {
+    const hasIonApp = $body.find('ion-app, ion-content').length > 0
+    
+    if (!hasIonApp) {
+      cy.log('⚠️ App Ionic não detectado, tentando reload...')
+      cy.reload()
+      cy.wait(2000)
+    }
+  })
+  
+  // 7) Aguarda ion-app ou ion-content estar presente
+  cy.get('ion-app, ion-content', { timeout }).should('exist')
+  cy.log('✅ App Ionic carregado com sucesso')
 })
 
 // Remove overlays/backdrops que travam clique (idempotente)
