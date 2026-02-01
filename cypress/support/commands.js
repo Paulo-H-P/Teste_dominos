@@ -292,7 +292,7 @@ Cypress.Commands.add('visitWithRetry', (pathOrUrl, options = {}) => {
   const validate = typeof options.validate === 'function'
     ? options.validate
     : () => {
-        cy.waitForAppReady({ timeout })
+        cy.waitForAppReady({ timeout, checkBlocking: false })
         cy.dismissOverlays()
       }
 

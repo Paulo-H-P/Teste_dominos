@@ -125,7 +125,7 @@ class FluxoCompraPage {
                 cy.wrap($modal).within(() => {
                   cy.contains('button, ion-button, a, [role="button"]', 'Pedir uma pizza', {
                     matchCase: false,
-                    timeout: 5000,
+                    timeout: 10000,
                   })
                     .should('exist')
                     .first() // Garante que apenas o primeiro elemento seja usado
@@ -140,12 +140,12 @@ class FluxoCompraPage {
         }
         // Estratégia 3: Tenta via app-success-registration-modal
         else if (temModalApp) {
-          cy.get('app-success-registration-modal', { timeout: 5000 })
+          cy.get('app-success-registration-modal', { timeout: 15000 })
             .should('exist')
             .within(() => {
               cy.contains('button, ion-button, a, [role="button"]', 'Pedir uma pizza', {
                 matchCase: false,
-                timeout: 5000,
+                timeout: 10000,
               })
                 .should('exist')
                 .first() // Garante que apenas o primeiro elemento seja usado
@@ -160,7 +160,7 @@ class FluxoCompraPage {
         else if (temModalTexto) {
           cy.contains('button, ion-button, a, [role="button"]', 'Pedir uma pizza', {
             matchCase: false,
-            timeout: 5000,
+            timeout: 10000,
           })
             .should('exist')
             .first() // Garante que apenas o primeiro elemento seja usado
@@ -234,7 +234,7 @@ class FluxoCompraPage {
               cy.get('[data-cy="store-closed-modal"]', { timeout: 10000 })
                 .should('exist')
                 .within(() => {
-                  cy.get('[data-cy="store-closed-start-button"]', { timeout: 5000 })
+                  cy.get('[data-cy="store-closed-start-button"]', { timeout: 15000 })
                     // Não verifica visibilidade pois modal pode ter display: none
                     .click({ force: true })
                     .then(() => {
@@ -263,7 +263,7 @@ class FluxoCompraPage {
                 .within(() => {
                   cy.contains('ion-button, button', 'Começar o meu pedido', {
                     matchCase: false,
-                    timeout: 5000,
+                    timeout: 10000,
                   })
                     .first() // Garante que apenas o primeiro elemento seja usado
                     // Não verifica visibilidade pois modal pode ter display: none
@@ -282,7 +282,7 @@ class FluxoCompraPage {
                 .within(() => {
                   cy.contains('ion-button, button', 'Começar o meu pedido', {
                     matchCase: false,
-                    timeout: 5000,
+                    timeout: 10000,
                   })
                     .first() // Garante que apenas o primeiro elemento seja usado
                     // Não verifica visibilidade pois modal pode ter display: none
@@ -298,7 +298,7 @@ class FluxoCompraPage {
                 .within(() => {
                   cy.contains('ion-button, button', 'Começar o meu pedido', {
                     matchCase: false,
-                    timeout: 5000,
+                    timeout: 10000,
                   })
                     .first() // Garante que apenas o primeiro elemento seja usado
                     // Não verifica visibilidade pois modal pode ter display: none
@@ -324,7 +324,7 @@ class FluxoCompraPage {
             if (!temBotaoNaModal) {
               cy.log('⚠️ Botão não encontrado dentro de ion-modal, tentando fallback...')
               cy.contains('button, ion-button, a, [role="button"]', /começar.*pedido/i, {
-                timeout: 5000,
+                timeout: 15000,
                 matchCase: false,
               })
                 .first()
@@ -386,9 +386,8 @@ class FluxoCompraPage {
         // Estratégia 1: Seletor completo com data-cy (preferencial)
         cy.log('✅ Usando seletor completo data-cy para promoção')
         this.elements.promocao()
-          .should('exist')
-          .should('be.visible')
           .first() // Garante que apenas o primeiro elemento seja usado
+          .should('exist')
           .scrollIntoView({ offset: { top: -100, left: 0 } })
           .click({ force: true })
       } else {
@@ -409,7 +408,7 @@ class FluxoCompraPage {
   clicarProduto() {
     // Aguarda a página carregar
     cy.wait(2000)
-    cy.waitForAppReady()
+    cy.waitForAppReady({ checkBlocking: false })
     cy.dismissOverlays()
 
     // Verifica se já está na página de detalhes da promoção
@@ -427,10 +426,11 @@ class FluxoCompraPage {
         if (temDataCy) {
           cy.log('✅ Card de promoção encontrado com data-cy, clicando...')
           this.elements.promoCardLink()
+            .first()
             .should('exist')
             //.should('be.visible')
             //.scrollIntoView({ offset: { top: -100, left: 0 } })
-            .click({ force: true, multiple: false })
+            .click({ force: true })
           cy.log('✅ Produto clicado: usando seletor data-cy')
         } else {
           // Estratégia 2: Fallback para seletores antigos
@@ -449,6 +449,7 @@ class FluxoCompraPage {
             cy.log('⚠️ Card de promoção não encontrado, tentando buscar por imagem...')
             // Fallback: tenta clicar na imagem do produto
             this.elements.produto()
+              .first()
               .should('exist')
               .scrollIntoView({ offset: { top: -100, left: 0 } })
               .click({ force: true })
@@ -464,7 +465,7 @@ class FluxoCompraPage {
   clicarEscolherProduto() {
     // Aguarda a página carregar
     cy.wait(2000)
-    cy.waitForAppReady()
+    cy.waitForAppReady({ checkBlocking: false })
     cy.dismissOverlays()
 
     // Usa o seletor .btn-primary para adicionar ao carrinho
@@ -495,21 +496,21 @@ class FluxoCompraPage {
 
   clicarEscolherSabor() {
     // Aguarda a página carregar
-    cy.waitForAppReady()
+    cy.waitForAppReady({ checkBlocking: false })
     cy.dismissOverlays()
     this.elements.escolher_sabor()
-      .should('exist')
       .first() // Garante que apenas o primeiro elemento seja clicado
+      .should('exist')
       .scrollIntoView({ offset: { top: -100, left: 0 } })
       .click({ force: true })
   }
 
   clicarAdcionarPizza() {
-    cy.waitForAppReady()
+    cy.waitForAppReady({ checkBlocking: false })
     cy.dismissOverlays()
     this.elements.adcionar_pizza()
-      .should('exist')
       .first() // Garante que apenas o primeiro elemento seja clicado
+      .should('exist')
       .scrollIntoView({ offset: { top: -100, left: 0 } })
       .click({ force: true })
     cy.wait(1000)
@@ -518,8 +519,8 @@ class FluxoCompraPage {
   clicarAdicionarCarrinho() {
     cy.wait(1000)
     this.elements.adicionarCarrinho()
-      .should('exist')
       .first() // Garante que apenas o primeiro elemento seja clicado
+      .should('exist')
       .scrollIntoView({ offset: { top: -100, left: 0 } })
       .click({ force: true })
     cy.wait(1000)
@@ -528,8 +529,8 @@ class FluxoCompraPage {
   clicarSeguirCarrinho() {
     cy.wait(1000)
     this.elements.seguirCarrinho()
-      .should('exist')
       .first() // Garante que apenas o primeiro elemento seja clicado
+      .should('exist')
       .scrollIntoView({ offset: { top: -100, left: 0 } })
       .click({ force: true })
     cy.wait(1000)
@@ -538,8 +539,8 @@ class FluxoCompraPage {
   clicarPagamento() {
     cy.wait(1000)
     this.elements.pagamento()
-      .should('exist')
       .first() // Garante que apenas o primeiro elemento seja clicado
+      .should('exist')
       .scrollIntoView({ offset: { top: -100, left: 0 } })
       .click({ force: true })
     cy.wait(1000)

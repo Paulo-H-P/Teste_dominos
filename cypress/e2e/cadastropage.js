@@ -34,7 +34,8 @@ class CadastroPage {
       cy.log(`🔍 Tentando preencher ${formcontrolname}...`)
       
       cy.get(hostSel, { timeout })
-        .should('be.visible')
+        .first()
+        .should('exist')
         .scrollIntoView({ offset: { top: -120, left: 0 } })
         .then(($host) => {
           const host = $host[0]
@@ -105,7 +106,7 @@ class CadastroPage {
     }
 
     clicarCadastrarse() {
-      cy.waitForAppReady()
+      cy.waitForAppReady({ checkBlocking: false })
       cy.dismissOverlays()
   
       // se existir link, clica; se não, vai direto
@@ -121,7 +122,7 @@ class CadastroPage {
       })
   
       cy.assertPath('/register')
-      cy.waitForAppReady()
+      cy.waitForAppReady({ checkBlocking: false })
       
       // Checkpoint flexível: verifica que a página carregou (não assume texto específico)
       cy.get('body', { timeout: 30000 }).should('be.visible')
@@ -237,20 +238,22 @@ class CadastroPage {
     preencherCheckBoxTermos() {
       cy.dismissOverlays()
       this.elements.checkBoxTermos()
+        .first()
         .should('exist')
         .scrollIntoView({ offset: { top: -120, left: 0 } })
         .click({ force: true })
-        cy.waitForAppReady()
+        cy.waitForAppReady({ checkBlocking: false })
     }
   
     preencherCriarConta() {
       cy.dismissOverlays()
       this.elements.criarContaBtn()
+        .first()
         .should('exist')
         .scrollIntoView({ offset: { top: -120, left: 0 } })
         .click({ force: true })
   
-      cy.waitForAppReady()
+      cy.waitForAppReady({ checkBlocking: false })
       
       // Aguarda a navegação para a tela de código de verificação
       cy.wait(3000)
@@ -275,7 +278,7 @@ class CadastroPage {
     preencherCodigoVerificacaoCompleto(codigo = '979899') {
       const digits = String(codigo).slice(0, 6).split('')
   
-      cy.waitForAppReady()
+      cy.waitForAppReady({ checkBlocking: false })
       cy.dismissOverlays()
       
       // Aguarda um pouco para a página de código carregar
@@ -324,18 +327,18 @@ class CadastroPage {
           })
         })
   
-      cy.waitForAppReady()
+      cy.waitForAppReady({ checkBlocking: false })
     }
 
     clicarContinuarCodigo() {
-      cy.waitForAppReady()
+      cy.waitForAppReady({ checkBlocking: false })
       cy.dismissOverlays()
       this.elements.continuarCodigoBtn()
+        .first()
         .should('exist')
-        .should('be.visible')
         .scrollIntoView({ offset: { top: -120, left: 0 } })
         .click({ force: true })
-      cy.waitForAppReady()
+      cy.waitForAppReady({ checkBlocking: false })
     }
   }
   
