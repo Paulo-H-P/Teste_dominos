@@ -146,7 +146,7 @@ describe('Fluxo de compra', () => {
     cy.location('pathname', { timeout: 30000 }).should('match', /register|cadastro/i)
     
     // 2) Aguarda o app Ionic carregar completamente (versão robusta)
-    cy.waitAppReady({ timeout: 60000 })
+    cy.waitForAppReady({ timeout: 60000 })
     cy.dismissOverlays()
     
     // 3) Verifica marcador visual da tela de cadastro
