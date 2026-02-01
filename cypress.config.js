@@ -5,6 +5,17 @@ module.exports = defineConfig({
   e2e: {
     setupNodeEvents(on, config) {
       allureCypress(on, config, { resultsDir: 'allure-results' })
+      
+      // Configura flags do Chrome para CI (Linux)
+      on('before:browser:launch', (browser = {}, launchOptions) => {
+        if (browser.family === 'chromium' && browser.name !== 'electron') {
+          launchOptions.args.push('--no-sandbox')
+          launchOptions.args.push('--disable-dev-shm-usage')
+          launchOptions.args.push('--disable-gpu')
+        }
+        return launchOptions
+      })
+      
       return config
     },
     
