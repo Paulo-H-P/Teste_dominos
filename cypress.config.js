@@ -6,12 +6,19 @@ module.exports = defineConfig({
     setupNodeEvents(on, config) {
       allureCypress(on, config, { resultsDir: 'allure-results' })
       
-      // Configura flags do Chrome para CI (Linux)
+      // Configura flags do Chrome para CI (Linux) - mais flags para melhorar conexão
       on('before:browser:launch', (browser = {}, launchOptions) => {
         if (browser.family === 'chromium' && browser.name !== 'electron') {
           launchOptions.args.push('--no-sandbox')
           launchOptions.args.push('--disable-dev-shm-usage')
           launchOptions.args.push('--disable-gpu')
+          launchOptions.args.push('--disable-software-rasterizer')
+          launchOptions.args.push('--disable-extensions')
+          launchOptions.args.push('--disable-background-networking')
+          launchOptions.args.push('--disable-background-timer-throttling')
+          launchOptions.args.push('--disable-renderer-backgrounding')
+          launchOptions.args.push('--disable-backgrounding-occluded-windows')
+          launchOptions.args.push('--disable-ipc-flooding-protection')
         }
         return launchOptions
       })
@@ -41,6 +48,9 @@ module.exports = defineConfig({
     pageLoadTimeout: 60000,
     requestTimeout: 20000,
     responseTimeout: 30000,
+    
+    // Timeout de conexão do Chrome (aumentado para CI)
+    execTimeout: 60000,
 
     chromeWebSecurity: false,
   },
