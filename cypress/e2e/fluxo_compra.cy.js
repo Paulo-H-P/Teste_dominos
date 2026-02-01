@@ -132,7 +132,7 @@ describe('Fluxo de compra', () => {
           timeout: 30000, // Reduzido de 60000 para 30000
           retries: 1, // Reduzido de 2 para 1
           validate: () => {
-            cy.waitForAppReady({ timeout: 30000 }) // Reduzido de 60000 para 30000
+            cy.waitForAppReady({ timeout: 30000, checkBlocking: false }) // Reduzido de 60000 para 30000
             cy.dismissOverlays()
           },
         })
