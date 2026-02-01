@@ -144,23 +144,17 @@ class CadastroPage {
     preencherNome(nome = 'Paulo Pinheiro') {
       cy.log(`📝 Nome: ${nome}`)
       
-      // Verifica se o formulário está carregado antes de tentar preencher
-      cy.get('body', { timeout: 30000 }).then(($body) => {
-        const hasForm = $body.find('form, ion-input, input[type="text"], input[type="email"]').length > 0
-        if (!hasForm) {
-          cy.log('⚠️ Formulário não detectado, aguardando...')
-          cy.wait(2000)
-        }
-      })
-      
-      // Aguarda o campo estar disponível (tenta múltiplos seletores)
-      cy.get('[data-cy="input-fullname"] > .native-input, ion-input[formcontrolname="fullName"] input, ion-input[formcontrolname="fullName"] .native-input', { timeout: 30000 })
+      // Estratégia robusta: tenta múltiplos seletores com Shadow DOM habilitado
+      // Shadow DOM já está habilitado globalmente no cypress.config.js
+      // Prioridade: data-cy > formcontrolname > input direto
+      cy.get('ion-input[formcontrolname="fullName"] input, [data-cy="input-fullname"] input, [data-cy="input-fullname"] > .native-input, ion-input[formcontrolname="fullName"] .native-input', { timeout: 30000 })
         .first()
         .should('exist')
         .scrollIntoView({ offset: { top: -120, left: 0 } })
         .should('be.visible')
         .clear({ force: true })
-        .type(nome, { force: true })
+        .type(nome, { force: true, delay: 10 })
+      
       return cy.wrap(nome, { log: false })
     }
 

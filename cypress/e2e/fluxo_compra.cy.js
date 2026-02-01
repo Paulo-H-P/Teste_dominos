@@ -142,31 +142,35 @@ describe('Fluxo de compra', () => {
     assertRoute('/register', { timeout: 30000 })
     
     // Checkpoint REAL: garante que está MESMO na tela de cadastro (não só na rota)
-    // Aguarda o formulário estar presente antes de tentar preencher
+    // 1) Garante que chegou na rota esperada
+    cy.location('pathname', { timeout: 30000 }).should('match', /register|cadastro/i)
+    
+    // 2) Aguarda o layout Ionic carregar
     cy.waitForAppReady({ timeout: 30000 })
     cy.dismissOverlays()
     
-    // Verifica se há formulário ou inputs na página (mais flexível que texto específico)
-    cy.get('body', { timeout: 30000 }).should('be.visible')
-    
-    // Verifica se há bloqueio/registro suspeito ANTES de tentar encontrar o formulário
+    // 3) Verifica se há bloqueio/registro suspeito ANTES de tentar encontrar o formulário
     cy.get('body', { timeout: 5000 }).then(($body) => {
       const bodyText = $body.text().toLowerCase()
-      const hasBlockText = /suspeita|suspeito|verificação adicional|captcha|bloqueado|acesso negado/i.test(bodyText)
+      const hasBlockText = /registro suspeito|suspeita|verificação|captcha|bloqueado|acesso negado/i.test(bodyText)
       
       if (hasBlockText) {
         cy.log('🚫 Bloqueio/registro suspeito detectado - fluxo de cadastro não disponível')
-        cy.screenshot('DEBUG_bloqueio_registro_suspeito')
-        throw new Error('Bloqueio/registro suspeito detectado no CI - fluxo de cadastro não disponível. Verifique screenshots.')
+        cy.screenshot('BLOQUEIO_ANTI_BOT_CI')
+        throw new Error('Caiu em tela de bloqueio/registro suspeito no CI. Cadastro não está disponível nesse momento.')
+      } else {
+        cy.log('✅ Nenhum bloqueio detectado, continuando...')
       }
     })
     
-    // Aguarda pelo menos um campo de input estar presente (com fallback para múltiplos seletores)
-    cy.get('[data-cy="input-fullname"] > .native-input, ion-input[formcontrolname="fullName"] input, ion-input[formcontrolname="fullName"] .native-input, form, ion-input, input[type="text"], input[type="email"]', { timeout: 30000 })
-      .first()
-      .should('exist')
+    // 4) Garante que o layout Ionic carregou (ion-content visível)
+    cy.get('ion-content', { timeout: 30000 }).should('be.visible')
+    
+    // 5) Verifica marcador visual da tela de cadastro
+    cy.contains(/criar conta|cadastro|seus dados|registro/i, { timeout: 30000 })
+      .should('be.visible')
       .then(() => {
-        cy.log('✅ Formulário detectado na página de registro')
+        cy.log('✅ Tela de cadastro confirmada visualmente')
       })
     
     cy.screenshot(`03_register_${numeroExecucao}`)
