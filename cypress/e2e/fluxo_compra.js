@@ -128,6 +128,7 @@ class FluxoCompraPage {
                     timeout: 5000,
                   })
                     .should('exist')
+                    .first() // Garante que apenas o primeiro elemento seja usado
                     .scrollIntoView({ offset: { top: -100, left: 0 } })
                     .click({ force: true })
                     .then(() => {
@@ -147,6 +148,7 @@ class FluxoCompraPage {
                 timeout: 5000,
               })
                 .should('exist')
+                .first() // Garante que apenas o primeiro elemento seja usado
                 .scrollIntoView({ offset: { top: -100, left: 0 } })
                 .click({ force: true })
                 .then(() => {
@@ -161,6 +163,7 @@ class FluxoCompraPage {
             timeout: 5000,
           })
             .should('exist')
+            .first() // Garante que apenas o primeiro elemento seja usado
             .scrollIntoView({ offset: { top: -100, left: 0 } })
             .click({ force: true })
             .then(() => {
@@ -221,6 +224,7 @@ class FluxoCompraPage {
               cy.log('✅ Usando seletor data-cy para modal loja fechada')
               this.elements.lojafechada()
                 .should('exist')
+                .first() // Garante que apenas o primeiro elemento seja usado
                 .scrollIntoView({ offset: { top: -100, left: 0 } })
                 // Não verifica visibilidade pois pode estar sobreposto por elementos fixed
                 .click({ force: true })
@@ -261,6 +265,7 @@ class FluxoCompraPage {
                     matchCase: false,
                     timeout: 5000,
                   })
+                    .first() // Garante que apenas o primeiro elemento seja usado
                     // Não verifica visibilidade pois modal pode ter display: none
                     .click({ force: true })
                     .then(() => {
@@ -279,6 +284,7 @@ class FluxoCompraPage {
                     matchCase: false,
                     timeout: 5000,
                   })
+                    .first() // Garante que apenas o primeiro elemento seja usado
                     // Não verifica visibilidade pois modal pode ter display: none
                     .click({ force: true })
                     .then(() => {
@@ -294,6 +300,7 @@ class FluxoCompraPage {
                     matchCase: false,
                     timeout: 5000,
                   })
+                    .first() // Garante que apenas o primeiro elemento seja usado
                     // Não verifica visibilidade pois modal pode ter display: none
                     .click({ force: true })
                     .then(() => {
@@ -381,6 +388,7 @@ class FluxoCompraPage {
         this.elements.promocao()
           .should('exist')
           .should('be.visible')
+          .first() // Garante que apenas o primeiro elemento seja usado
           .scrollIntoView({ offset: { top: -100, left: 0 } })
           .click({ force: true })
       } else {
