@@ -38,21 +38,28 @@ jobs:
 
       - name: Run Cypress tests
         id: cypress
-        continue-on-error: true
         shell: bash
         run: |
+          export TERM=xterm
+          
           echo "Starting Cypress tests..."
           echo "Node version: $(node --version)"
           echo "NPM version: $(npm --version)"
           echo "Cypress version: $(npx cypress --version || echo 'Cypress not found')"
+          
+          # Desabilita exit on error para capturar exit code corretamente
+          set +e
           
           # Run Cypress with Chrome (browserArgs removido - não é mais suportado no Cypress 13.17.0)
           # As flags do Chrome são configuradas no cypress.config.js via setupNodeEvents
           npx cypress run --browser chrome
           exit_code=$?
           
+          # Reabilita exit on error
+          set -e
+          
           echo "Cypress exit code: $exit_code"
-          echo "exit_code=$exit_code" >> $GITHUB_OUTPUT
+          echo "exit_code=$exit_code" >> "$GITHUB_OUTPUT"
           
           # List allure-results if they exist
           if [ -d "allure-results" ]; then
@@ -62,7 +69,7 @@ jobs:
             echo "Warning: allure-results directory not found"
           fi
           
-          # Always exit 0 to continue workflow
+          # Always exit 0 to continue workflow (para gerar relatório mesmo se falhar)
           exit 0
 
       - name: Generate Allure HTML report
@@ -124,7 +131,7 @@ jobs:
           - **Commit:** ${{ github.sha }}
           - **Branch:** ${{ github.ref_name }}
           - **Workflow:** ${{ github.workflow }}
-          - **Executado em:** ${{ github.run_started_at }}
+          - **Executado em:** ${{ github.event.head_commit.timestamp }}
           
           ## 🔍 Estrutura do Relatório
           
@@ -203,7 +210,7 @@ jobs:
           echo "- **Commit:** \`${{ github.sha }}\`" >> $GITHUB_STEP_SUMMARY
           echo "- **Branch:** \`${{ github.ref_name }}\`" >> $GITHUB_STEP_SUMMARY
           echo "- **Workflow:** \`${{ github.workflow }}\`" >> $GITHUB_STEP_SUMMARY
-          echo "- **Executado em:** \`${{ github.event.head_commit.timestamp || github.run_started_at }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "- **Executado em:** \`${{ github.event.head_commit.timestamp }}\`" >> $GITHUB_STEP_SUMMARY
 
       - name: Deploy to GitHub Pages
         if: always()
@@ -216,7 +223,7 @@ jobs:
           keep_files: false
           user_name: 'github-actions[bot]'
           user_email: 'github-actions[bot]@users.noreply.github.com'
-        
+
       - name: Verify GitHub Pages deployment
         if: always()
         run: |
@@ -230,13 +237,34 @@ jobs:
           echo ""
           echo "🔗 URL esperada: ${{ steps.pages-url.outputs.url }}"
 
+      # ✅ NOTIFICAÇÃO WHATSAPP (via Slack) - PASSOU + FALHOU
+      # Colocado ANTES do "Report test status" para não ser bloqueado por exit 1.
+      - name: Notify WhatsApp (via Slack)
+        if: always()
+        uses: slackapi/slack-github-action@v1.25.0
+        with:
+          payload: |
+            {
+              "text": "*E2E Dominos* - ${{ steps.cypress.outputs.exit_code == '0' && '✅ PASSOU' || '❌ FALHOU' }}\n\n• Repo: ${{ github.repository }}\n• Branch: ${{ github.ref_name }}\n• Commit: ${{ github.sha }}\n• Allure: ${{ steps.pages-url.outputs.url }}\n• Run: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+            }
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK }}
+
       - name: Report test status
         if: always()
         shell: bash
         run: |
-          if [ "${{ steps.cypress.outputs.exit_code }}" != "0" ]; then
+          EXIT_CODE="${{ steps.cypress.outputs.exit_code }}"
+          
+          # Fallback: se exit_code estiver vazio, assume falha
+          if [ -z "$EXIT_CODE" ]; then
+            EXIT_CODE=1
+            echo "⚠️ Exit code não foi capturado, assumindo falha (1)"
+          fi
+          
+          if [ "$EXIT_CODE" != "0" ]; then
             echo "⚠️ ========================================="
-            echo "⚠️ Cypress tests failed with exit code ${{ steps.cypress.outputs.exit_code }}"
+            echo "⚠️ Cypress tests failed with exit code $EXIT_CODE"
             echo "⚠️ ========================================="
             echo ""
             echo "📊 IMPORTANTE: O relatório foi gerado e publicado com sucesso!"
@@ -258,3 +286,48 @@ jobs:
             echo ""
             echo "📊 Relatório disponível em: ${{ steps.pages-url.outputs.url }}"
           fi
+
+      - name: Send email notification
+        if: always()
+        uses: dawidd6/action-send-mail@v3
+        with:
+          server_address: smtp.gmail.com
+          server_port: 465
+          username: ${{ secrets.EMAIL_USERNAME }}
+          password: ${{ secrets.EMAIL_PASSWORD }}
+          subject: |
+            ${{ steps.cypress.outputs.exit_code == '0' && '✅ Testes Passaram' || '❌ Testes Falharam' }} - 
+            ${{ github.repository }} - 
+            ${{ github.ref_name }}
+          to: ${{ secrets.NOTIFICATION_EMAILS }}
+          from: ${{ secrets.EMAIL_USERNAME }}
+          html_body: |
+            <h2>Status dos Testes E2E - Dominos</h2>
+            
+            <p><strong>Status:</strong> 
+            ${{ steps.cypress.outputs.exit_code == '0' && '✅ <span style="color: green;">Todos os testes passaram!</span>' || '❌ <span style="color: red;">Alguns testes falharam</span>' }}
+            </p>
+            
+            <p><strong>Repositório:</strong> ${{ github.repository }}</p>
+            <p><strong>Branch:</strong> ${{ github.ref_name }}</p>
+            <p><strong>Commit:</strong> <code>${{ github.sha }}</code></p>
+            <p><strong>Executado em:</strong> ${{ github.event.head_commit.timestamp }}</p>
+            <p><strong>Workflow:</strong> ${{ github.workflow }}</p>
+            
+            <h3>📊 Relatório</h3>
+            <p>
+              <a href="${{ steps.pages-url.outputs.url }}" style="background-color: #4CAF50; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; display: inline-block;">
+                Ver Relatório Allure
+              </a>
+            </p>
+            
+            <p><strong>GitHub Pages:</strong> <a href="${{ steps.pages-url.outputs.url }}">${{ steps.pages-url.outputs.url }}</a></p>
+            <p><strong>Workflow Run:</strong> <a href="${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}">Ver Execução Completa</a></p>
+            
+            ${{ steps.cypress.outputs.exit_code != '0' && '<p><strong>⚠️ Nota:</strong> O relatório completo com screenshots e logs está disponível no GitHub Pages e no artifact desta execução.</p>' || '' }}
+            
+            <hr>
+            <p style="color: #666; font-size: 12px;">
+              Esta notificação foi enviada automaticamente pelo GitHub Actions.<br>
+              Teste executado a cada 10 minutos (schedule: */10 * * * *)
+            </p>

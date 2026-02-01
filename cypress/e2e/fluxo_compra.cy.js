@@ -149,6 +149,18 @@ describe('Fluxo de compra', () => {
     // Verifica se há formulário ou inputs na página (mais flexível que texto específico)
     cy.get('body', { timeout: 30000 }).should('be.visible')
     
+    // Verifica se há bloqueio/registro suspeito ANTES de tentar encontrar o formulário
+    cy.get('body', { timeout: 5000 }).then(($body) => {
+      const bodyText = $body.text().toLowerCase()
+      const hasBlockText = /suspeita|suspeito|verificação adicional|captcha|bloqueado|acesso negado/i.test(bodyText)
+      
+      if (hasBlockText) {
+        cy.log('🚫 Bloqueio/registro suspeito detectado - fluxo de cadastro não disponível')
+        cy.screenshot('DEBUG_bloqueio_registro_suspeito')
+        throw new Error('Bloqueio/registro suspeito detectado no CI - fluxo de cadastro não disponível. Verifique screenshots.')
+      }
+    })
+    
     // Aguarda pelo menos um campo de input estar presente (com fallback para múltiplos seletores)
     cy.get('[data-cy="input-fullname"] > .native-input, ion-input[formcontrolname="fullName"] input, ion-input[formcontrolname="fullName"] .native-input, form, ion-input, input[type="text"], input[type="email"]', { timeout: 30000 })
       .first()
