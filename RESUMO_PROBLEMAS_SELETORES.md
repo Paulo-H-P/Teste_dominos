@@ -258,6 +258,100 @@ cy.window().then((win) => {
 ```javascript
 // cypress.config.js
 defaultCommandTimeout: 15000,
+```
+
+---
+
+## 🧩 Plano de Adoção de `data-cy` (Seletores de Teste)
+
+Para estabilizar de vez os testes e reduzir drasticamente os problemas descritos acima, os principais pontos da aplicação devem expor **atributos de teste dedicados** (`data-cy`). Abaixo, um resumo dos locais críticos e os seletores recomendados.
+
+### Cadastro (`cadastropage.js`)
+
+- **Link para cadastro /register**
+  - HTML sugerido: `<a routerLink="/register" data-cy="register-link">Cadastrar-se</a>`
+  - Cypress: `cy.get('[data-cy="register-link"]')`
+
+- **Checkbox de termos**
+  - HTML: `<ion-checkbox formControlName="terms" data-cy="terms-checkbox"></ion-checkbox>`
+  - Cypress: `cy.get('[data-cy="terms-checkbox"]')`
+
+- **Botão “Criar minha conta”**
+  - HTML: `<ion-button type="submit" data-cy="create-account-button">Criar minha conta</ion-button>`
+  - Cypress: `cy.get('[data-cy="create-account-button"]')`
+
+- **Campos do formulário**
+  - Nome: `<ion-input formControlName="fullName" data-cy="input-fullname"></ion-input>`
+  - E-mail: `<ion-input formControlName="email" data-cy="input-email"></ion-input>`
+  - Celular: `<ion-input formControlName="cellphone" data-cy="input-phone"></ion-input>`
+  - Senha: `<ion-input formControlName="password" data-cy="input-password"></ion-input>`
+  - Confirmar senha: `<ion-input formControlName="confirmPassword" data-cy="input-password-confirm"></ion-input>`
+
+  Esses `data-cy` permitem simplificar helpers como `typeInIonInput` e eliminar muitos fallbacks baseados em `formcontrolname` + Shadow DOM no longo prazo.
+
+- **Inputs de código de verificação**
+  - HTML: `<code-input data-cy="verification-code">...</code-input>`
+  - Cypress: `cy.get('[data-cy="verification-code"] input')`
+
+- **Âncora de página de cadastro**
+  - HTML: `<app-register-page data-cy="page-register">...</app-register-page>`
+  - Cypress: `cy.get('[data-cy="page-register"]')`
+
+### Fluxo de compra / promoções (`fluxo_compra.js`)
+
+- **Banner de cookies**
+  - HTML: `<button data-cy="cookie-close">Fechar</button>` dentro de `app-cookie-banner`
+  - Cypress: `cy.get('[data-cy="cookie-close"]')`
+
+- **Modal “Loja fechada”**
+  - HTML:
+    - `<ion-modal data-cy="store-closed-modal">...</ion-modal>`
+    - `<ion-button data-cy="store-closed-start-button">Começar o meu pedido</ion-button>`
+  - Cypress:
+    - `cy.get('[data-cy="store-closed-modal"]')`
+    - `cy.get('[data-cy="store-closed-start-button"]')`
+
+- **Menu de promoções / tab ativa**
+  - HTML: `<a data-cy="menu-promotions" class="active">Promoções</a>`
+  - Cypress: `cy.get('[data-cy="menu-promotions"]')`
+
+- **Card da promoção (id 718679)**
+  - HTML:
+    - `<div data-promotion-id="718679" data-cy="promo-card-718679">...`
+    - `<a data-cy="promo-card-link">...</a>`
+    - `<span data-cy="promo-card-minimum-price">...</span>`
+  - Cypress:
+    - Imagem: `cy.get('[data-cy="promo-card-718679"] [data-cy="promo-card-image"]')`
+    - Preço/botão: `cy.get('[data-cy="promo-card-718679"] [data-cy="promo-card-minimum-price"]')`
+
+- **Botões de fluxo (carrinho e pagamento)**
+  - HTML:
+    - `<button data-cy="add-to-cart">Adicionar ao carrinho</button>`
+    - `<button data-cy="go-to-cart">Ir para o carrinho</button>`
+    - `<button data-cy="go-to-payment">Ir para pagamento</button>`
+  - Cypress:
+    - `cy.get('[data-cy="add-to-cart"]')`
+    - `cy.get('[data-cy="go-to-cart"]')`
+    - `cy.get('[data-cy="go-to-payment"]')`
+
+- **Modal de sucesso de cadastro (“Pedir uma pizza”)**
+  - HTML: `<ion-button data-cy="success-go-to-pizza">Pedir uma pizza</ion-button>`
+  - Cypress: `cy.get('[data-cy="success-go-to-pizza"]')`
+
+### Páginas-chave (âncoras de navegação)
+
+Além de elementos individuais, é recomendável expor um identificador de página para cada tela importante:
+
+- Cadastro: `<app-register-page data-cy="page-register">`
+- Promoções: `<app-promotions data-cy="page-promotions">`
+- Carrinho: `<app-cart-page data-cy="page-cart">`
+- Pagamento: `<app-payment-page data-cy="page-payment">`
+
+Isso permite checkpoints simples e robustos em vez de depender de textos e seletores complexos:
+
+```javascript
+cy.get('[data-cy="page-register"]', { timeout: 30000 }).should('exist')
+```
 requestTimeout: 15000,
 responseTimeout: 15000,
 ```

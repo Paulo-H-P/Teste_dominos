@@ -91,15 +91,16 @@ describe('Fluxo de compra', () => {
     const tempoInicioVisit = performance.now()
 
     cy.visitWithRetry('/', {
-      timeout: 60000,
-      retries: 2,
+      timeout: 30000, // Reduzido de 60000 para 30000 (30s é suficiente)
+      retries: 1, // Reduzido de 2 para 1 (menos tentativas)
       validate: () => {
-        cy.waitForAppReady({ timeout: 60000 })
+        // waitForAppReady já verifica readyState, não precisa waitDocumentReady depois
+        cy.waitForAppReady({ timeout: 30000 }) // Reduzido de 60000 para 30000
         cy.dismissOverlays()
       },
     })
 
-    waitDocumentReady(60000)
+    // Removido waitDocumentReady redundante - já está dentro de waitForAppReady
 
     cy.then(() => {
       const tempoVisit = ((performance.now() - tempoInicioVisit) / 1000).toFixed(2)
@@ -128,10 +129,10 @@ describe('Fluxo de compra', () => {
       if (!path.includes('/register')) {
         cy.log('↪️ Não caiu em /register via UI. Forçando navegação.')
         return cy.visitWithRetry('/register', {
-          timeout: 60000,
-          retries: 2,
+          timeout: 30000, // Reduzido de 60000 para 30000
+          retries: 1, // Reduzido de 2 para 1
           validate: () => {
-            cy.waitForAppReady({ timeout: 60000 })
+            cy.waitForAppReady({ timeout: 30000 }) // Reduzido de 60000 para 30000
             cy.dismissOverlays()
           },
         })
@@ -176,10 +177,12 @@ describe('Fluxo de compra', () => {
 
     // Código de verificação
     allure.step('🔐 Preencher código de verificação', () => {})
-    // (fica mais estável se garantir que o componente já montou)
-    cy.get('code-input', { timeout: 30000 }).should('exist')
+    // A função preencherCodigoVerificacaoCompleto já aguarda o componente aparecer
     CadastroPage.preencherCodigoVerificacaoCompleto('979899')
     cy.screenshot(`06_codigo_${numeroExecucao}`)
+    
+    // Clicar em continuar após preencher o código
+    CadastroPage.clicarContinuarCodigo()
 
     // Métricas cadastro
     const tempoFimCadastro = Date.now()

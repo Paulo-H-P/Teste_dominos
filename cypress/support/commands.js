@@ -87,10 +87,34 @@ Cypress.Commands.add('waitForAppReady', (opts = {}) => {
 
   cy.document({ timeout }).its('readyState').should('eq', 'complete')
 
-  // dupla RAF ajuda MUITO em CI (Ionic)
+  // dupla RAF ajuda MUITO em CI (Ionic) - com timeout de segurança
   cy.window({ timeout }).then((win) => {
-    return new Cypress.Promise((resolve) => {
-      win.requestAnimationFrame(() => win.requestAnimationFrame(resolve))
+    return new Cypress.Promise((resolve, reject) => {
+      // Timeout de segurança para garantir que sempre resolva
+      const safetyTimeout = setTimeout(() => {
+        cy.log('⚠️ requestAnimationFrame timeout, resolvendo forçadamente')
+        resolve()
+      }, 2000) // 2 segundos de timeout de segurança
+
+      try {
+        if (win.requestAnimationFrame) {
+          win.requestAnimationFrame(() => {
+            win.requestAnimationFrame(() => {
+              clearTimeout(safetyTimeout)
+              resolve()
+            })
+          })
+        } else {
+          // Se requestAnimationFrame não estiver disponível, resolve imediatamente
+          clearTimeout(safetyTimeout)
+          resolve()
+        }
+      } catch (e) {
+        // Em caso de erro, resolve mesmo assim para não travar o teste
+        clearTimeout(safetyTimeout)
+        cy.log(`⚠️ Erro em requestAnimationFrame: ${e.message}`)
+        resolve()
+      }
     })
   })
 
