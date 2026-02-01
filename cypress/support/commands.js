@@ -87,12 +87,17 @@ Cypress.Commands.add('medirTempo', (nome, callback, tempoLimiteSegundos = 10) =>
  * Verifica:
  * 1. Document ready state
  * 2. URL atual (log)
- * 3. Se há bloqueio/erro fora do app (screenshot + erro)
+ * 3. Se há bloqueio/erro fora do app (screenshot + erro) - opcional via opts.checkBlocking
  * 4. Se o app Ionic (ion-app/ion-content) carregou
  * 5. Se não carregou, tenta reload uma vez
+ * 
+ * @param {Object} opts - Opções
+ * @param {number} opts.timeout - Timeout em ms (default: 60000)
+ * @param {boolean} opts.checkBlocking - Verificar bloqueios/erros (default: true)
  */
 Cypress.Commands.add('waitForAppReady', (opts = {}) => {
   const timeout = opts.timeout || 60000
+  const checkBlocking = opts.checkBlocking !== false // default: true
 
   // 1) Verifica document ready state
   cy.document({ timeout: 30000 }).its('readyState').should('eq', 'complete')
@@ -103,17 +108,47 @@ Cypress.Commands.add('waitForAppReady', (opts = {}) => {
   })
 
   // 3) Se caiu em página de bloqueio/erro fora do Ionic, isso pega
-  cy.document().then((doc) => {
-    const html = doc.documentElement.innerText || ''
-    const title = doc.title || ''
-    cy.log(`📄 TITLE: ${title}`)
+  // Verificação mais específica para evitar falsos positivos
+  if (checkBlocking) {
+    cy.document().then((doc) => {
+      const html = doc.documentElement.innerText || ''
+      const title = doc.title || ''
+      cy.log(`📄 TITLE: ${title}`)
 
-    const suspects = /access denied|forbidden|cloudflare|captcha|suspeit|verifica|blocked|erro|error 5\d\d|error 4\d\d/i
-    if (suspects.test(html) || suspects.test(title)) {
-      cy.screenshot('BLOQUEIO_OU_ERRO_FORA_DO_APP')
-      throw new Error('Página fora do app (bloqueio/erro). Ver screenshot BLOQUEIO_OU_ERRO_FORA_DO_APP')
-    }
-  })
+      // Padrões mais específicos que realmente indicam bloqueio/erro (não palavras soltas)
+      const blockPatterns = [
+        /access denied/i,
+        /forbidden/i,
+        /cloudflare.*challenge/i,
+        /captcha.*required/i,
+        /registro.*suspeito/i,
+        /acesso.*bloqueado/i,
+        /error 403/i,
+        /error 404/i,
+        /error 500/i,
+        /error 502/i,
+        /error 503/i,
+        /error 504/i,
+        /blocked.*by.*administrator/i,
+        /your.*request.*has.*been.*blocked/i
+      ]
+      
+      // Verifica se algum padrão de bloqueio está presente
+      const hasBlockPattern = blockPatterns.some(pattern => pattern.test(html) || pattern.test(title))
+      
+      // Só falha se encontrar padrão de bloqueio E não houver app Ionic
+      if (hasBlockPattern) {
+        const hasIonApp = doc.querySelector('ion-app, ion-content')
+        if (!hasIonApp) {
+          cy.screenshot('BLOQUEIO_OU_ERRO_FORA_DO_APP')
+          cy.log(`🚫 Bloqueio detectado - HTML: ${html.substring(0, 200)}...`)
+          throw new Error('Página fora do app (bloqueio/erro). Ver screenshot BLOQUEIO_OU_ERRO_FORA_DO_APP')
+        } else {
+          cy.log('⚠️ Padrão de bloqueio detectado, mas app Ionic existe - continuando...')
+        }
+      }
+    })
+  }
 
   // 4) Dupla RAF ajuda MUITO em CI (Ionic) - com timeout de segurança
   cy.window({ timeout: 30000 }).then((win) => {
