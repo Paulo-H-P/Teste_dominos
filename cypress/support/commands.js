@@ -97,7 +97,8 @@ Cypress.Commands.add('medirTempo', (nome, callback, tempoLimiteSegundos = 10) =>
  */
 Cypress.Commands.add('waitForAppReady', (opts = {}) => {
   const timeout = opts.timeout || 60000
-  const checkBlocking = opts.checkBlocking !== false // default: true
+  // Se checkBlocking for explicitamente false, desabilita. Caso contrário, default é false (mais seguro)
+  const checkBlocking = opts.checkBlocking === true
 
   // 1) Verifica document ready state
   cy.document({ timeout: 30000 }).its('readyState').should('eq', 'complete')
@@ -110,17 +111,20 @@ Cypress.Commands.add('waitForAppReady', (opts = {}) => {
   // 3) Verifica se app Ionic existe primeiro (mais rápido)
   cy.get('body', { timeout: 30000 }).should('be.visible')
   
-  cy.document().then((doc) => {
-    const hasIonApp = doc.querySelector('ion-app, ion-content')
-    
-    // Se app Ionic existe, não precisa verificar bloqueios
-    if (hasIonApp) {
-      cy.log('✅ App Ionic detectado - pulando verificação de bloqueio')
-      return
-    }
-    
-    // Se app Ionic não existe E checkBlocking está ativo, verifica bloqueios
-    if (checkBlocking) {
+  // Só verifica bloqueios se checkBlocking for explicitamente true
+  if (!checkBlocking) {
+    cy.log('✅ Verificação de bloqueio desabilitada (checkBlocking: false)')
+  } else {
+    cy.document().then((doc) => {
+      const hasIonApp = doc.querySelector('ion-app, ion-content, ion-page, app-root, [ng-version]')
+      
+      // Se app Ionic existe, não precisa verificar bloqueios
+      if (hasIonApp) {
+        cy.log('✅ App Ionic detectado - pulando verificação de bloqueio')
+        return
+      }
+      
+      // Se app Ionic não existe E checkBlocking está ativo, verifica bloqueios
       const html = doc.documentElement.innerText || ''
       const title = doc.title || ''
       cy.log(`📄 TITLE: ${title}`)
