@@ -142,23 +142,27 @@ describe('Fluxo de compra', () => {
     assertRoute('/register', { timeout: 30000 })
     
     // Checkpoint REAL: garante que está MESMO na tela de cadastro (não só na rota)
+    // Aguarda o formulário estar presente antes de tentar preencher
+    cy.waitForAppReady({ timeout: 30000 })
+    cy.dismissOverlays()
+    
     // Verifica se há formulário ou inputs na página (mais flexível que texto específico)
     cy.get('body', { timeout: 30000 }).should('be.visible')
-    cy.get('body', { timeout: 30000 }).then(($body) => {
-      const hasForm = $body.find('form, ion-input, input[type="text"], input[type="email"]').length > 0
-      if (hasForm) {
+    
+    // Aguarda pelo menos um campo de input estar presente (com fallback para múltiplos seletores)
+    cy.get('[data-cy="input-fullname"] > .native-input, ion-input[formcontrolname="fullName"] input, ion-input[formcontrolname="fullName"] .native-input, form, ion-input, input[type="text"], input[type="email"]', { timeout: 30000 })
+      .first()
+      .should('exist')
+      .then(() => {
         cy.log('✅ Formulário detectado na página de registro')
-      } else {
-        cy.log('⚠️ Formulário não encontrado, mas continuando...')
-        cy.screenshot('DEBUG_sem_formulario_registro')
-      }
-    })
+      })
     
     cy.screenshot(`03_register_${numeroExecucao}`)
 
     // Preenchimento
     allure.step('✏️ Preencher formulário de cadastro', () => {})
     cy.dismissOverlays()
+    cy.wait(1000) // Pequena espera para garantir que o formulário está totalmente renderizado
 
     CadastroPage.preencherNome()
     CadastroPage.preencherEmail()

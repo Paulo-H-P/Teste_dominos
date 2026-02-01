@@ -94,13 +94,14 @@ class CadastroPage {
         return cy.get('[data-cy="verification-code"] input, code-input input', { timeout: 20000 })
       },
       continuarCodigoBtn: () => cy.get('#boxPasswordRecovery > app-button > .btn-primary', { timeout: 20000 }),
-      nome: () => cy.get('[data-cy="input-fullname"] > .native-input', { timeout: 30000 }),
-      email: () => cy.get('[data-cy="input-email"] > .native-input', { timeout: 30000 }),
-      phone: () => cy.get('[data-cy="input-phone"] > .native-input', { timeout: 30000 }),
-      password: () => cy.get('[data-cy="input-password"] > .native-input', { timeout: 30000 }),
-      passwordConfirm: () => cy.get('[data-cy="input-password-confirm"] > .native-input', { timeout: 30000 }),
-      zipcode: () => cy.get('[data-cy="input-zipcode"] > .native-input', { timeout: 30000 }),
-      addressNumber: () => cy.get('[data-cy="input-address-number"] > .native-input', { timeout: 30000 }),
+      // Seletores com fallback: tenta data-cy primeiro, depois usa formcontrolname
+      nome: () => cy.get('[data-cy="input-fullname"] > .native-input, ion-input[formcontrolname="fullName"] input, ion-input[formcontrolname="fullName"] .native-input', { timeout: 30000 }),
+      email: () => cy.get('[data-cy="input-email"] > .native-input, ion-input[formcontrolname="email"] input, ion-input[formcontrolname="email"] .native-input', { timeout: 30000 }),
+      phone: () => cy.get('[data-cy="input-phone"] > .native-input, ion-input[formcontrolname="phone"] input, ion-input[formcontrolname="phoneNumber"] input, ion-input[formcontrolname="mobile"] input', { timeout: 30000 }),
+      password: () => cy.get('[data-cy="input-password"] > .native-input, ion-input[formcontrolname="password"] input', { timeout: 30000 }),
+      passwordConfirm: () => cy.get('[data-cy="input-password-confirm"] > .native-input, ion-input[formcontrolname="confirmPassword"] input, ion-input[formcontrolname="confirm_password"] input', { timeout: 30000 }),
+      zipcode: () => cy.get('[data-cy="input-zipcode"] > .native-input, ion-input[formcontrolname="zipCode"] input', { timeout: 30000 }),
+      addressNumber: () => cy.get('[data-cy="input-address-number"] > .native-input, ion-input[formcontrolname="number"] input', { timeout: 30000 }),
     }
 
     clicarCadastrarse() {
@@ -142,9 +143,22 @@ class CadastroPage {
   
     preencherNome(nome = 'Paulo Pinheiro') {
       cy.log(`📝 Nome: ${nome}`)
-      this.elements.nome()
-        .should('be.visible')
+      
+      // Verifica se o formulário está carregado antes de tentar preencher
+      cy.get('body', { timeout: 30000 }).then(($body) => {
+        const hasForm = $body.find('form, ion-input, input[type="text"], input[type="email"]').length > 0
+        if (!hasForm) {
+          cy.log('⚠️ Formulário não detectado, aguardando...')
+          cy.wait(2000)
+        }
+      })
+      
+      // Aguarda o campo estar disponível (tenta múltiplos seletores)
+      cy.get('[data-cy="input-fullname"] > .native-input, ion-input[formcontrolname="fullName"] input, ion-input[formcontrolname="fullName"] .native-input', { timeout: 30000 })
+        .first()
+        .should('exist')
         .scrollIntoView({ offset: { top: -120, left: 0 } })
+        .should('be.visible')
         .clear({ force: true })
         .type(nome, { force: true })
       return cy.wrap(nome, { log: false })
@@ -157,9 +171,11 @@ class CadastroPage {
     preencherEmail(email = null) {
       const emailFinal = email || this.gerarEmailUnico()
       cy.log(`📧 Email: ${emailFinal}`)
-      this.elements.email()
-        .should('be.visible')
+      cy.get('[data-cy="input-email"] > .native-input, ion-input[formcontrolname="email"] input, ion-input[formcontrolname="email"] .native-input', { timeout: 30000 })
+        .first()
+        .should('exist')
         .scrollIntoView({ offset: { top: -120, left: 0 } })
+        .should('be.visible')
         .clear({ force: true })
         .type(emailFinal, { force: true })
       return cy.wrap(emailFinal, { log: false })
@@ -168,9 +184,11 @@ class CadastroPage {
     preencherCelular(celular = null) {
       const celularFinal = celular || this.gerarTelefoneUnico()
       cy.log(`📱 Celular: ${celularFinal}`)
-      this.elements.phone()
-        .should('be.visible')
+      cy.get('[data-cy="input-phone"] > .native-input, ion-input[formcontrolname="phone"] input, ion-input[formcontrolname="phoneNumber"] input, ion-input[formcontrolname="mobile"] input', { timeout: 30000 })
+        .first()
+        .should('exist')
         .scrollIntoView({ offset: { top: -120, left: 0 } })
+        .should('be.visible')
         .clear({ force: true })
         .type(celularFinal, { force: true })
       return cy.wrap(celularFinal, { log: false })
@@ -178,25 +196,30 @@ class CadastroPage {
   
     preencherSenha(senha = '1234567A') {
       cy.log(`🔒 Senha: ${senha}`)
-      this.elements.password()
-        .should('be.visible')
+      cy.get('[data-cy="input-password"] > .native-input, ion-input[formcontrolname="password"] input', { timeout: 30000 })
+        .first()
+        .should('exist')
         .scrollIntoView({ offset: { top: -120, left: 0 } })
+        .should('be.visible')
         .clear({ force: true })
         .type(senha, { force: true, log: false })
     }
   
     preencherConfirmaSenha(confirma = '1234567A') {
       cy.log(`🔒 Confirmar Senha: ${confirma}`)
-      this.elements.passwordConfirm()
-        .should('be.visible')
+      cy.get('[data-cy="input-password-confirm"] > .native-input, ion-input[formcontrolname="confirmPassword"] input, ion-input[formcontrolname="confirm_password"] input', { timeout: 30000 })
+        .first()
+        .should('exist')
         .scrollIntoView({ offset: { top: -120, left: 0 } })
+        .should('be.visible')
         .clear({ force: true })
         .type(confirma, { force: true, log: false })
     }
   
     preencherCep(cep = '06454010') {
       cy.log(`📮 CEP: ${cep}`)
-      this.elements.zipcode()
+      cy.get('[data-cy="input-zipcode"] > .native-input, ion-input[formcontrolname="zipCode"] input', { timeout: 30000 })
+        .first()
         .should('exist')
         .scrollIntoView({ offset: { top: -150, left: 0 } }) // Offset maior para evitar sobreposição
         // Não verifica visibilidade pois pode estar sobreposto por elementos fixed
@@ -207,7 +230,8 @@ class CadastroPage {
   
     preencherNumeroEndereco(numero = '258') {
       cy.log(`🏠 Número: ${numero}`)
-      this.elements.addressNumber()
+      cy.get('[data-cy="input-address-number"] > .native-input, ion-input[formcontrolname="number"] input', { timeout: 30000 })
+        .first()
         .should('exist')
         .scrollIntoView({ offset: { top: -150, left: 0 } }) // Offset maior para evitar sobreposição
         // Não verifica visibilidade pois pode estar sobreposto por elementos fixed
