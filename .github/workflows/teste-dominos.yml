@@ -50,6 +50,7 @@ jobs:
           echo "   Node version: $(node --version)"
           echo "   NPM version: $(npm --version)"
           echo "   Cypress version: $(npx cypress --version || echo 'Cypress not found')"
+          echo "   Timestamp: $(date)"
           echo ""
           echo "📁 Arquivos de teste encontrados:"
           find cypress/e2e -name "*.cy.js" -o -name "*.spec.js" | head -10
@@ -57,6 +58,7 @@ jobs:
           echo "⏳ Executando testes (isso pode levar alguns minutos)..."
           echo "   💡 Dica: Os logs abaixo mostram o progresso em tempo real"
           echo "   💡 Cada etapa do teste será exibida conforme executa"
+          echo "   💡 Atualize a página para ver logs mais recentes"
           echo ""
           
           # Desabilita exit on error para capturar exit code corretamente
@@ -64,8 +66,12 @@ jobs:
           
           # Run Cypress with Chrome - mostra logs detalhados em tempo real
           echo "🔄 Iniciando execução do Cypress..."
+          echo "   Timestamp: $(date '+%Y-%m-%d %H:%M:%S')"
           echo "   Os logs abaixo mostram cada etapa do teste conforme executa"
+          echo "   💡 IMPORTANTE: Atualize a página periodicamente para ver logs mais recentes"
           echo ""
+          
+          # Executa Cypress (os logs aparecem em tempo real no GitHub Actions)
           npx cypress run --browser chrome
           exit_code=$?
           
@@ -77,6 +83,7 @@ jobs:
           echo "✅ TESTES CONCLUÍDOS"
           echo "✅ ========================================="
           echo "   Exit code: $exit_code"
+          echo "   Timestamp: $(date)"
           echo ""
           echo "exit_code=$exit_code" >> "$GITHUB_OUTPUT"
           
