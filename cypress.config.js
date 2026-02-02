@@ -1,10 +1,22 @@
 const { defineConfig } = require('cypress')
 const { allureCypress } = require('allure-cypress/reporter')
+require('dotenv').config()
 
 module.exports = defineConfig({
   e2e: {
     setupNodeEvents(on, config) {
       allureCypress(on, config, { resultsDir: 'allure-results' })
+      
+      // Configuração do Qase Reporter
+      if (process.env.QASE_TOKEN && process.env.QASE_PROJECT_CODE) {
+        const qaseReporter = require('cypress-qase-reporter')
+        qaseReporter(on, config, {
+          token: process.env.QASE_TOKEN,
+          projectCode: process.env.QASE_PROJECT_CODE,
+          runName: `E2E Tests - ${new Date().toISOString()}`,
+          logging: true,
+        })
+      }
       
       // Configura flags do Chrome para CI (Linux) - mais flags para melhorar conexão
       on('before:browser:launch', (browser = {}, launchOptions) => {

@@ -18,5 +18,9 @@ npm-debug.log*
 .DS_Store
 Thumbs.db
 
+# Variáveis de ambiente
+.env
+.env.local
+
 # Repositórios aninhados
 acompnhamento_dominos/

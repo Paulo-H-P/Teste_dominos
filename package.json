@@ -20,6 +20,7 @@
     "allure-cypress": "^3.4.5",
     "cypress": "^13.17.0",
     "cypress-qase-reporter": "^3.1.2",
+    "dotenv": "^17.2.3",
     "rimraf": "^6.1.2"
   }
 }

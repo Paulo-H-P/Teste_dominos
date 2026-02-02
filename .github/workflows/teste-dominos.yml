@@ -19,6 +19,11 @@ jobs:
       contents: write
       pages: write
       id-token: write
+    
+    env:
+      QASE_TOKEN: ${{ secrets.QASE_TOKEN }}
+      QASE_PROJECT_CODE: DOMINOS
+      CYPRESS_BASE_URL: https://app.dominos.com.br
 
     steps:
       - name: Checkout code
