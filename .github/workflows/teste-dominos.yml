@@ -42,23 +42,42 @@ jobs:
         run: |
           export TERM=xterm
           
-          echo "Starting Cypress tests..."
-          echo "Node version: $(node --version)"
-          echo "NPM version: $(npm --version)"
-          echo "Cypress version: $(npx cypress --version || echo 'Cypress not found')"
+          echo "🚀 ========================================="
+          echo "🚀 INICIANDO TESTES CYPRESS"
+          echo "🚀 ========================================="
+          echo ""
+          echo "📋 Informações do ambiente:"
+          echo "   Node version: $(node --version)"
+          echo "   NPM version: $(npm --version)"
+          echo "   Cypress version: $(npx cypress --version || echo 'Cypress not found')"
+          echo ""
+          echo "📁 Arquivos de teste encontrados:"
+          find cypress/e2e -name "*.cy.js" -o -name "*.spec.js" | head -10
+          echo ""
+          echo "⏳ Executando testes (isso pode levar alguns minutos)..."
+          echo "   💡 Dica: Os logs abaixo mostram o progresso em tempo real"
+          echo "   💡 Cada etapa do teste será exibida conforme executa"
+          echo ""
           
           # Desabilita exit on error para capturar exit code corretamente
           set +e
           
-          # Run Cypress with Chrome (browserArgs removido - não é mais suportado no Cypress 13.17.0)
-          # As flags do Chrome são configuradas no cypress.config.js via setupNodeEvents
+          # Run Cypress with Chrome - mostra logs detalhados em tempo real
+          echo "🔄 Iniciando execução do Cypress..."
+          echo "   Os logs abaixo mostram cada etapa do teste conforme executa"
+          echo ""
           npx cypress run --browser chrome
           exit_code=$?
           
           # Reabilita exit on error
           set -e
           
-          echo "Cypress exit code: $exit_code"
+          echo ""
+          echo "✅ ========================================="
+          echo "✅ TESTES CONCLUÍDOS"
+          echo "✅ ========================================="
+          echo "   Exit code: $exit_code"
+          echo ""
           echo "exit_code=$exit_code" >> "$GITHUB_OUTPUT"
           
           # List allure-results if they exist
