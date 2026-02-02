@@ -3,55 +3,59 @@ import CadastrarPage from './pages/cadastrar'
 import PreencherCadastroPage from './pages/preencher_cadastro'
 import ValidarCodigoPage from './pages/validar_codigo'
 import Overlays from './pages/overlays'
+import PromocoesPage from './pages/promocao'
+import PromoProdutoPage from './pages/promo_produto'
+import PagamentoPage from './pages/pagamento'
 
 
 
 
-describe('Home → Cadastro', () => {
 
-    function chegarnoCadastro() {
-        HomeCadastrarPage.visitarHome()
+describe('Home → Cadastro', () => {    
+
+
+    it.only('Cadastro + login pedido + pagamento + acompanhamento', () => {
+
+      HomeCadastrarPage.visitarHome()
         HomeCadastrarPage.assertHomeCarregou()
         HomeCadastrarPage.fecharCookiesSeExistir()
         HomeCadastrarPage.irParaCadastro()
         HomeCadastrarPage.assertFoiParaCadastro()
         CadastrarPage.assertTelaCadastro()
-    }
 
-    function preencherCadastro() {
-        chegarnoCadastro()
         PreencherCadastroPage.preencherFormulario()
         PreencherCadastroPage.clicarCriarMinhaConta()
         ValidarCodigoPage.validarCodigoCompleto('979899')
-    }
-  it('deve ir da home para o cadastro', () => {
-    HomeCadastrarPage.visitarHome()
-    HomeCadastrarPage.assertHomeCarregou()
-    HomeCadastrarPage.fecharCookiesSeExistir()
 
-    HomeCadastrarPage.irParaCadastro()
-    HomeCadastrarPage.assertFoiParaCadastro()
+        Overlays.prepararParaContinuar()
+        //Overlays.PedirPizza()
+        Overlays.fecharModalPedirPizzaSeExistir()
+        Overlays.fecharModalLojaFechadaSeExistir()
 
-    CadastrarPage.assertTelaCadastro()
-  })
-  it('deve preencher o formulario de cadastro', () => {
-    chegarnoCadastro()
-    PreencherCadastroPage.preencherFormulario()
-    PreencherCadastroPage.clicarCriarMinhaConta()
-    ValidarCodigoPage.validarCodigoCompleto('979899')
-    //PreencherCadastroPage.assertFormularioPreencido()
-  })
+        PromocoesPage.irParaPromocoes()
 
-  it.only('fechar modal e clicar em promoção', () => {
-    chegarnoCadastro()
-    preencherCadastro()
+        PromocoesPage.irParaPromocoes()
+        PromoProdutoPage.abrirPromocaoPorId('718679')
 
-    
-    Overlays.prepararParaContinuar()
-    Overlays.PedirPizza()
-    
-    
-  })
+        PromoProdutoPage.escolherSabor()
+        PromoProdutoPage.adcionarnoCarrinho()
+
+        PromoProdutoPage.escolherSabor()
+        PromoProdutoPage.adcionarnoCarrinho()
+
+        PromoProdutoPage.finalizarCarrinho()
+        PromoProdutoPage.adicionarBebida()
+
+        PagamentoPage.IrParaPagamento()
+
+
+
+
+
+
+      
+    })
+
 })
 
 

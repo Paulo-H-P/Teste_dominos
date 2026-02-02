@@ -16,7 +16,7 @@ class CadastrarPage {
       cy.location('pathname', { timeout: 60000 }).should('include', '/register')
   
       // 2) elemento único da tela (pelo print: existe "Nome completo")
-      cy.contains('Nome completo', { timeout: 60000 }).should('be.visible')
+      cy.contains('Crie sua conta', { timeout: 60000 }).should('be.visible')
   
       // 3) opcional: garante que existem inputs no formulário
       cy.get('input', { timeout: 60000 }).should('have.length.at.least', 1)
