@@ -22,15 +22,79 @@ class HomeCadastrarPage {
      * ASSERT da Home:
      * - Não tenta provar "layout bonito", só prova que o app carregou.
      * - Se isso falhar, você sabe que é carregamento/erro/redirect.
+     * - Captura evidências (screenshot e texto) quando falhar para diagnóstico.
      */
     assertHomeCarregou() {
-      cy.get('body', { timeout: 60000 }).should('be.visible')
-  
-      // Se seu projeto é Ionic/Capacitor, geralmente existe ion-app
-      cy.get('ion-app', { timeout: 60000 }).should('exist')
-  
-      // Ajuda debug no CI: imprime URL atual no log
-      cy.location('href').then((href) => cy.log(`URL atual: ${href}`))
+      cy.get('body', { timeout: 60000 }).should('exist')
+
+      // Logs de diagnóstico
+      cy.location('href').then((href) => cy.log(`📍 URL: ${href}`))
+      cy.document().then((doc) => cy.log(`📄 TITLE: ${doc.title}`))
+
+      // Captura texto do body para diagnóstico (primeiros 800 caracteres)
+      cy.get('body').then(($b) => {
+        const text = ($b.text() || '').trim().slice(0, 800)
+        cy.log(`📝 BODY_TEXT_800: ${text}`)
+      })
+
+      // Procura múltiplos roots possíveis (Ionic, Angular, React, etc.)
+      const roots = [
+        'ion-app',
+        'ion-content',
+        'ion-router-outlet',
+        'app-root',
+        '#app',
+        '#root',
+        '[ng-version]',
+        '[data-reactroot]'
+      ].join(', ')
+
+      // Verifica se algum root existe antes de fazer assert
+      cy.get('body').then(($body) => {
+        const temRoot = roots.split(', ').some((root) => {
+          return $body.find(root).length > 0
+        })
+
+        if (!temRoot) {
+          // Se não encontrou root, captura evidências ANTES do assert falhar
+          cy.log('❌ App não carregou: nenhum root encontrado')
+          cy.screenshot('DEBUG_body_sem_app')
+          
+          // Captura HTML completo do body para análise
+          const html = $body.html().slice(0, 2000)
+          cy.log(`🔍 BODY_HTML_2000: ${html}`)
+          
+          // Verifica se há mensagens comuns de bloqueio
+          const bodyText = $body.text().toLowerCase()
+          if (bodyText.includes('checking your browser') || bodyText.includes('just a moment')) {
+            cy.log('⚠️ Possível bloqueio anti-bot detectado (Cloudflare/WAF)')
+          }
+          if (bodyText.includes('403') || bodyText.includes('access denied')) {
+            cy.log('⚠️ Possível erro 403/Access Denied detectado')
+          }
+          if (bodyText.includes('enable javascript')) {
+            cy.log('⚠️ Mensagem "Enable JavaScript" detectada')
+          }
+        }
+      })
+
+      // Tenta encontrar QUALQUER root típico de SPA (com timeout)
+      // Se falhar, o Cypress vai capturar screenshot automaticamente
+      cy.get(roots, { timeout: 60000 })
+        .should('exist')
+        .then(() => {
+          cy.log('✅ App carregado: root encontrado')
+          
+          // Identifica qual root foi encontrado
+          cy.get('body').then(($body) => {
+            const rootEncontrado = roots.split(', ').find((root) => {
+              return $body.find(root).length > 0
+            })
+            if (rootEncontrado) {
+              cy.log(`✅ Root encontrado: ${rootEncontrado}`)
+            }
+          })
+        })
     }
   
     /**
