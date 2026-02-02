@@ -196,6 +196,14 @@ Cypress.Commands.add('waitForAppReady', (opts = {}) => {
     
     if (!hasIonApp) {
       cy.log('⚠️ App Ionic não detectado, tentando reload...')
+      
+      // Captura evidências ANTES do reload
+      const text = ($body.text() || '').trim().slice(0, 800)
+      const html = $body.html().slice(0, 2000)
+      cy.log(`📝 BODY_TEXT_800 (antes reload): ${text}`)
+      cy.log(`🔍 BODY_HTML_2000 (antes reload): ${html}`)
+      cy.screenshot('DEBUG_app_nao_detectado_antes_reload')
+      
       cy.reload()
       cy.wait(3000)
       
@@ -203,7 +211,26 @@ Cypress.Commands.add('waitForAppReady', (opts = {}) => {
       cy.get('body', { timeout: 10000 }).then(($body2) => {
         const hasIonApp2 = $body2.find('ion-app, ion-content, ion-page, app-root, [ng-version]').length > 0
         if (!hasIonApp2) {
-          cy.log('⚠️ App Ionic ainda não detectado após reload - continuando mesmo assim')
+          cy.log('⚠️ App Ionic ainda não detectado após reload')
+          
+          // Captura evidências APÓS reload também
+          const text2 = ($body2.text() || '').trim().slice(0, 800)
+          const html2 = $body2.html().slice(0, 2000)
+          cy.log(`📝 BODY_TEXT_800 (após reload): ${text2}`)
+          cy.log(`🔍 BODY_HTML_2000 (após reload): ${html2}`)
+          cy.screenshot('DEBUG_app_nao_detectado_apos_reload')
+          
+          // Verifica mensagens de bloqueio
+          const bodyText = $body2.text().toLowerCase()
+          if (bodyText.includes('checking your browser') || bodyText.includes('just a moment')) {
+            cy.log('🚫 BLOQUEIO DETECTADO: Cloudflare/WAF - "checking your browser" ou "just a moment"')
+          }
+          if (bodyText.includes('403') || bodyText.includes('access denied')) {
+            cy.log('🚫 ERRO 403 DETECTADO: Access Denied')
+          }
+          if (bodyText.includes('enable javascript')) {
+            cy.log('⚠️ Mensagem "Enable JavaScript" detectada')
+          }
         }
       })
     }
@@ -226,6 +253,7 @@ Cypress.Commands.add('waitForAppReady', (opts = {}) => {
     if (!found) {
       cy.log('⚠️ Nenhum seletor do app Ionic encontrado, mas continuando...')
       cy.log('⚠️ Isso pode indicar que o app ainda está carregando ou usa estrutura diferente')
+      cy.log('⚠️ O assertHomeCarregou() vai tentar encontrar novamente com timeout maior')
     }
   })
   

@@ -56,25 +56,59 @@ class HomeCadastrarPage {
         })
 
         if (!temRoot) {
-          // Se não encontrou root, captura evidências ANTES do assert falhar
-          cy.log('❌ App não carregou: nenhum root encontrado')
+          // Se não encontrou root, captura TODAS as evidências ANTES do assert falhar
+          cy.log('❌ =========================================')
+          cy.log('❌ APP NÃO CARREGOU: NENHUM ROOT ENCONTRADO')
+          cy.log('❌ =========================================')
+          
+          // Captura screenshot
           cy.screenshot('DEBUG_body_sem_app')
           
-          // Captura HTML completo do body para análise
-          const html = $body.html().slice(0, 2000)
-          cy.log(`🔍 BODY_HTML_2000: ${html}`)
+          // Captura texto e HTML
+          const text = ($body.text() || '').trim()
+          const html = $body.html()
+          
+          cy.log(`📝 BODY_TEXT_COMPLETO (${text.length} chars): ${text.slice(0, 1000)}`)
+          cy.log(`🔍 BODY_HTML_COMPLETO (${html.length} chars): ${html.slice(0, 3000)}`)
+          
+          // Verifica elementos presentes no DOM
+          cy.log('🔍 Elementos encontrados no body:')
+          const elementos = ['script', 'link', 'div', 'span', 'p', 'h1', 'h2', 'h3', 'body', 'html']
+          elementos.forEach((el) => {
+            const count = $body.find(el).length
+            if (count > 0) {
+              cy.log(`   - ${el}: ${count} elemento(s)`)
+            }
+          })
           
           // Verifica se há mensagens comuns de bloqueio
-          const bodyText = $body.text().toLowerCase()
+          const bodyText = text.toLowerCase()
           if (bodyText.includes('checking your browser') || bodyText.includes('just a moment')) {
-            cy.log('⚠️ Possível bloqueio anti-bot detectado (Cloudflare/WAF)')
+            cy.log('🚫 BLOQUEIO DETECTADO: Cloudflare/WAF - "checking your browser" ou "just a moment"')
           }
           if (bodyText.includes('403') || bodyText.includes('access denied')) {
-            cy.log('⚠️ Possível erro 403/Access Denied detectado')
+            cy.log('🚫 ERRO 403 DETECTADO: Access Denied')
           }
           if (bodyText.includes('enable javascript')) {
             cy.log('⚠️ Mensagem "Enable JavaScript" detectada')
           }
+          if (bodyText.includes('cloudflare')) {
+            cy.log('🚫 Cloudflare detectado no texto')
+          }
+          if (bodyText.includes('captcha')) {
+            cy.log('🚫 CAPTCHA detectado')
+          }
+          
+          // Verifica se há scripts carregando
+          cy.window().then((win) => {
+            const scripts = win.document.querySelectorAll('script[src]')
+            cy.log(`📜 Scripts externos encontrados: ${scripts.length}`)
+            scripts.forEach((script, i) => {
+              if (i < 5) { // Mostra apenas os 5 primeiros
+                cy.log(`   - ${script.src}`)
+              }
+            })
+          })
         }
       })
 
