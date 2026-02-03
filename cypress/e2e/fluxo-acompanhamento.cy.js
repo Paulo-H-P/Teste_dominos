@@ -6,15 +6,16 @@ import Overlays from './pages/overlays'
 import PromocoesPage from './pages/promocao'
 import PromoProdutoPage from './pages/promo_produto'
 import PagamentoPage from './pages/pagamento'
+import { qase } from 'cypress-qase-reporter/mocha'
 
 
 
 
 
-describe('Home → Cadastro', () => {    
+describe('Home → Cadastro', qase(1, () => {    
 
 
-    it.only('Cadastro + login pedido + pagamento + acompanhamento (Qase ID: 1)', () => {
+    it.only('Cadastro + login pedido + pagamento + acompanhamento ', () => {
       cy.log('🚀 =========================================')
       cy.log('🚀 INICIANDO FLUXO COMPLETO')
       cy.log('🚀 =========================================')
@@ -90,7 +91,7 @@ describe('Home → Cadastro', () => {
       
     })
 
-})
+}))
 
 
 
