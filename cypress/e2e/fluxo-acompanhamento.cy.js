@@ -14,7 +14,7 @@ import PagamentoPage from './pages/pagamento'
 describe('Home → Cadastro', () => {    
 
 
-    it.only('Cadastro + login pedido + pagamento + acompanhamento', () => {
+    it.only('Cadastro + login pedido + pagamento + acompanhamento (Qase ID: 1)', () => {
       cy.log('🚀 =========================================')
       cy.log('🚀 INICIANDO FLUXO COMPLETO')
       cy.log('🚀 =========================================')

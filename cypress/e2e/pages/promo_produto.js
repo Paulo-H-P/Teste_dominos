@@ -83,6 +83,7 @@ class PromoProdutoPage {
     
     cy.get('.d-flex > h4')
       .should('exist')
+      .first()
       .click({ force: true })
   }
 
