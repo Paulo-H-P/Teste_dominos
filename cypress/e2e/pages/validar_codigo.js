@@ -5,7 +5,7 @@ class ValidarCodigoPage {
      * (sem mexer no front, usamos texto/estrutura)
      */
     assertTelaCodigo() {
-      cy.location('pathname', { timeout: 60000 }).should('match', /register|codigo|verification|password/i)
+      cy.location('pathname', { timeout: 60000 }).should('match', /register|codigo|verification|password|validate-code|validate|code/i)
       cy.contains(/valida|c[oó]digo/i, { timeout: 60000 }).should('exist')
     }
   

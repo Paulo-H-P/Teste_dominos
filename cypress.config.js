@@ -7,15 +7,28 @@ module.exports = defineConfig({
     setupNodeEvents(on, config) {
       allureCypress(on, config, { resultsDir: 'allure-results' })
       
-      // Configuração do Qase Reporter
+      // Configuração do Qase Plugin (hooks) - O plugin envia os resultados automaticamente
       if (process.env.QASE_TOKEN && process.env.QASE_PROJECT_CODE) {
-        const qaseReporter = require('cypress-qase-reporter')
-        qaseReporter(on, config, {
-          token: process.env.QASE_TOKEN,
-          projectCode: process.env.QASE_PROJECT_CODE,
-          runName: `E2E Tests - ${new Date().toISOString()}`,
-          logging: true,
-        })
+        try {
+          const qasePlugin = require('cypress-qase-reporter/plugin')
+          // Configura as opções do Qase no config.reporterOptions
+          config.reporterOptions = config.reporterOptions || {}
+          config.reporterOptions.cypressQaseReporterReporterOptions = {
+            token: process.env.QASE_TOKEN,
+            projectCode: process.env.QASE_PROJECT_CODE,
+            runName: `E2E Tests - ${new Date().toISOString()}`,
+            logging: true,
+            basePath: 'https://api.qase.io/v1',
+          }
+          // Inicializa o plugin (hooks before:run e after:run)
+          // O plugin automaticamente envia os resultados para o Qase após a execução
+          qasePlugin(on, config)
+          console.log('✅ Qase Plugin configurado - resultados serão enviados automaticamente após os testes')
+        } catch (error) {
+          console.warn('⚠️ Erro ao configurar Qase Plugin:', error.message)
+        }
+      } else {
+        console.warn('⚠️ QASE_TOKEN ou QASE_PROJECT_CODE não configurados')
       }
       
       // Configura flags do Chrome para CI (Linux) - mais flags para melhorar conexão
