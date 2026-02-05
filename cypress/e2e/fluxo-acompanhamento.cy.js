@@ -26,8 +26,17 @@ describe('Home → Cadastro', qase(2, () => {
       cy.log('🚀 INICIANDO FLUXO COMPLETO')
       cy.log('🚀 =========================================')
 
-      cy.log('📍 ETAPA 1: Acessando Home')
-      HomeCadastrarPage.visitarHome()
+      // Verifica se já está na home (caso o teste anterior tenha passado)
+      cy.location('href', { timeout: 5000 }).then((href) => {
+        const isHome = href.includes('app.dominos.com.br') && !href.includes('/register')
+        
+        if (!isHome) {
+          cy.log('📍 ETAPA 1: Acessando Home')
+          HomeCadastrarPage.visitarHome()
+        } else {
+          cy.log('📍 ETAPA 1: Já está na Home, pulando visita')
+        }
+      })
       
       cy.log('📍 ETAPA 2: Verificando se Home carregou')
       HomeCadastrarPage.assertHomeCarregou()
