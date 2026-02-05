@@ -165,15 +165,17 @@ class HomeCadastrarPage {
     irParaCadastro() {
       // Limpa sessão antes de tentar cadastrar (evita redirecionamento para /tabs/home)
       cy.log('🧹 Limpando sessão antes de navegar para cadastro')
+      cy.clearCookies()
+      cy.clearLocalStorage()
       cy.window().then((win) => {
         // Limpa localStorage e sessionStorage
         win.localStorage.clear()
         win.sessionStorage.clear()
-        cy.log('✅ Sessão limpa')
+        cy.log('✅ Sessão limpa (cookies, localStorage, sessionStorage)')
       })
       
       // Aguarda um pouco para garantir que a limpeza foi processada
-      cy.wait(500)
+      cy.wait(1000)
       
       const linkSel = '[routerlink="/register"], [routerLink="/register"], a[href*="/register"]'
   
