@@ -374,3 +374,45 @@ Cypress.Commands.add('waitForDocumentReady', () => {
 Cypress.Commands.add('waitForTitleIncludes', (text) => {
   cy.title({ timeout: 20000 }).should('include', text)
 })
+
+Cypress.Commands.add('qase', (id) => {
+  cy.wrap(null, { log: false }).then(() => {
+    Cypress.env('qase_case_id', id)
+  })
+})
+
+/**
+ * Helper para preencher campos que podem estar em shadow DOM (Ionic)
+ * Funciona tanto com shadow DOM quanto com light DOM
+ */
+Cypress.Commands.add('typeInDataCy', (dataCy, text, options = {}) => {
+  const timeout = options.timeout || 30000
+  
+  cy.get(`[data-cy="${dataCy}"]`, { timeout })
+    .should('be.visible')
+    .then($el => {
+      const element = $el[0]
+      
+      // Verifica se tem shadowRoot (Ionic)
+      if (element.shadowRoot) {
+        cy.log(`🔍 Campo ${dataCy} está em shadow DOM, atravessando...`)
+        // Atravessa o shadow DOM
+        cy.wrap($el)
+          .shadow()
+          .find('input, textarea')
+          .first()
+          .should('be.visible')
+          .clear({ force: true })
+          .type(text, { force: true, ...options })
+      } else {
+        // Light DOM - procura input/textarea dentro do elemento
+        cy.log(`🔍 Campo ${dataCy} está em light DOM`)
+        cy.wrap($el)
+          .find('input, textarea')
+          .first()
+          .should('be.visible')
+          .clear({ force: true })
+          .type(text, { force: true, ...options })
+      }
+    })
+})

@@ -21,7 +21,8 @@ jobs:
       id-token: write
     
     env:
-      QASE_TOKEN: ${{ secrets.QASE_TOKEN }}
+      QASE_MODE: testops
+      QASE_API_TOKEN: ${{ secrets.QASE_TOKEN }}
       QASE_PROJECT_CODE: DOMINOS
       CYPRESS_BASE_URL: https://app.dominos.com.br
 
@@ -81,7 +82,7 @@ jobs:
           echo "   💡 IMPORTANTE: Atualize a página periodicamente para ver logs mais recentes"
           echo ""
           
-          # Executa Cypress (os logs aparecem em tempo real no GitHub Actions)
+          # Executa Cypress com reporter do Qase (os logs aparecem em tempo real no GitHub Actions)
           npx cypress run --browser chrome
           exit_code=$?
           
@@ -107,6 +108,28 @@ jobs:
           
           # Always exit 0 to continue workflow (para gerar relatório mesmo se falhar)
           exit 0
+
+      - name: Generate Qase HTML report
+        if: always()
+        shell: bash
+        run: |
+          echo "📊 Gerando relatório HTML para o Qase..."
+          node scripts/generate-qase-report.js || echo "⚠️ Erro ao gerar relatório Qase, continuando..."
+          if [ -d "qase-report" ]; then
+            echo "✅ Relatório Qase gerado com sucesso"
+            ls -la qase-report/
+            # Copiar relatório para screenshots para ser anexado pelo Qase
+            mkdir -p cypress/screenshots
+            cp qase-report/index.html cypress/screenshots/qase-report.html || echo "⚠️ Erro ao copiar relatório"
+          else
+            echo "⚠️ Diretório qase-report não encontrado"
+          fi
+          
+          # Verificar se vídeos foram gerados
+          if [ -d "cypress/videos" ]; then
+            echo "📹 Vídeos encontrados:"
+            ls -lh cypress/videos/ || echo "Nenhum vídeo encontrado"
+          fi
 
       - name: Generate Allure HTML report
         if: always()
@@ -343,3 +366,69 @@ jobs:
             echo ""
             echo "📊 Relatório disponível em: ${{ steps.pages-url.outputs.url }}"
           fi
+
+      - name: Send test result e-mail
+        if: always()  # executa independentemente do resultado dos testes
+        uses: dawidd6/action-send-mail@v4
+        with:
+          server_address: smtp.gmail.com
+          server_port: 587
+          username: ${{ secrets.EMAIL_USERNAME }}
+          password: ${{ secrets.EMAIL_PASSWORD }}
+          subject: "E2E Dominos – Status: ${{ job.status }} – ${{ github.ref_name }}"
+          to: ${{ secrets.NOTIFICATION_EMAILS }}
+          from: GitHub CI <${{ secrets.EMAIL_USERNAME }}>
+          secure: true
+          html_body: |
+            <html>
+            <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
+              <h2 style="color: #2c3e50;">📊 Relatório de Testes E2E - Dominos</h2>
+              
+              <div style="background-color: ${{ job.status == 'success' && '#d4edda' || '#f8d7da' }}; padding: 15px; border-radius: 5px; margin: 20px 0;">
+                <p style="margin: 0; font-size: 18px;">
+                  <strong>Status da execução:</strong> 
+                  <span style="color: ${{ job.status == 'success' && '#155724' || '#721c24' }};">
+                    ${{ job.status == 'success' && '✅ SUCESSO' || '❌ FALHA' }}
+                  </span>
+                </p>
+              </div>
+              
+              <h3 style="color: #2c3e50;">📋 Informações da Execução</h3>
+              <ul>
+                <li><strong>Branch:</strong> ${{ github.ref_name }}</li>
+                <li><strong>Commit:</strong> <code>${{ github.sha }}</code></li>
+                <li><strong>Workflow:</strong> ${{ github.workflow }}</li>
+                <li><strong>Executado em:</strong> ${{ github.event.head_commit.timestamp }}</li>
+              </ul>
+              
+              <h3 style="color: #2c3e50;">🔗 Links Úteis</h3>
+              <ul>
+                <li>
+                  <strong>Relatório Allure:</strong> 
+                  <a href="${{ steps.pages-url.outputs.url }}" style="color: #007bff; text-decoration: none;">
+                    ${{ steps.pages-url.outputs.url }}
+                  </a>
+                </li>
+                <li>
+                  <strong>Logs do Workflow:</strong> 
+                  <a href="https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}" style="color: #007bff; text-decoration: none;">
+                    Ver logs completos
+                  </a>
+                </li>
+                <li>
+                  <strong>Qase Test Run:</strong> 
+                  <a href="https://app.qase.io/run/DOMINOS/dashboard" style="color: #007bff; text-decoration: none;">
+                    Ver no Qase
+                  </a>
+                </li>
+              </ul>
+              
+              <hr style="border: none; border-top: 1px solid #ddd; margin: 20px 0;">
+              
+              <p style="color: #666; font-size: 12px;">
+                Esta é uma notificação automática do GitHub Actions.<br>
+                Repositório: <a href="https://github.com/${{ github.repository }}" style="color: #007bff;">${{ github.repository }}</a>
+              </p>
+            </body>
+            </html>
+

@@ -12,10 +12,11 @@ import { qase } from 'cypress-qase-reporter/mocha'
 
 
 
-describe('Home → Cadastro', qase(1, () => {    
+// Caso Qase #2: Cadastro + login pedido + pagamento + acompanhamento
+// Configuração: 05 Feb 2026 13:27:58
+describe('Home → Cadastro', qase(2, () => {    
 
-
-    it.only('Cadastro + login pedido + pagamento + acompanhamento ', () => {
+    it('Cadastro + login pedido + pagamento + acompanhamento ', () => {
       cy.log('🚀 =========================================')
       cy.log('🚀 INICIANDO FLUXO COMPLETO')
       cy.log('🚀 =========================================')
@@ -87,11 +88,11 @@ describe('Home → Cadastro', qase(1, () => {
 
 
 
-
       
-    })
 
-}))
+    })
+}))  // 👈 Note os DOIS parênteses fechando: um para qase() e um para describe()  
+
 
 
 

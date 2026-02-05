@@ -37,13 +37,15 @@ class PreencherCadastroPage {
     // ==========
   
     els = {
-      nome: () => cy.get('[data-cy="input-fullname"] > .native-input', { timeout: 60000 }),
-      email: () => cy.get('[data-cy="input-email"] > .native-input', { timeout: 60000 }),
-      phone: () => cy.get('[data-cy="input-phone"] > .native-input', { timeout: 60000 }),
-      password: () => cy.get('[data-cy="input-password"] > .native-input', { timeout: 60000 }),
-      passwordConfirm: () => cy.get('[data-cy="input-password-confirm"] > .native-input', { timeout: 60000 }),
-      zipcode: () => cy.get('[data-cy="input-zipcode"] > .native-input', { timeout: 60000 }),
-      addressNumber: () => cy.get('[data-cy="input-address-number"] > .native-input', { timeout: 60000 }),
+      // Seletores robustos que funcionam com shadow DOM (Ionic) e light DOM
+      // Removido dependência de .native-input - usa apenas data-cy
+      nome: () => cy.get('[data-cy="input-fullname"]', { timeout: 30000 }),
+      email: () => cy.get('[data-cy="input-email"]', { timeout: 30000 }),
+      phone: () => cy.get('[data-cy="input-phone"]', { timeout: 30000 }),
+      password: () => cy.get('[data-cy="input-password"]', { timeout: 30000 }),
+      passwordConfirm: () => cy.get('[data-cy="input-password-confirm"]', { timeout: 30000 }),
+      zipcode: () => cy.get('[data-cy="input-zipcode"]', { timeout: 30000 }),
+      addressNumber: () => cy.get('[data-cy="input-address-number"]', { timeout: 30000 }),
       termos: () => cy.get('[data-cy="terms-checkbox"]', { timeout: 60000 }),
       criarContaBtn: () => cy.get('.btn-primary', { timeout: 20000 }),
     }
@@ -55,10 +57,27 @@ class PreencherCadastroPage {
     /**
      * Confirma que estamos na tela de cadastro.
      * Como você não pode mexer no front, usamos um marcador real: o texto "Nome completo".
+     * Adiciona checkpoint para garantir que o formulário está visível.
      */
     assertTelaCadastro() {
       cy.location('pathname', { timeout: 60000 }).should('include', '/register')
       cy.contains('Nome completo', { timeout: 60000 }).should('be.visible')
+      
+      // Checkpoint: garantir que o formulário de cadastro está visível
+      // Tenta encontrar o formulário ou pelo menos um campo de input
+      cy.get('[data-cy="register-form"]', { timeout: 30000 })
+        .should('exist')
+        .then(() => {
+          cy.log('✅ Formulário de cadastro encontrado e visível')
+        })
+      
+      // Verifica se pelo menos o campo de nome está presente (fallback)
+      cy.get('[data-cy="input-fullname"]', { timeout: 30000 })
+        .should('exist')
+        .should('be.visible')
+        .then(() => {
+          cy.log('✅ Campo de nome encontrado - formulário está carregado')
+        })
     }
   
     // ==========
@@ -82,48 +101,62 @@ class PreencherCadastroPage {
       const phoneFinal = phone || this.gerarTelefoneUnico()
   
       cy.log(`🧾 Cadastro gerado: ${emailFinal} | ${phoneFinal}`)
-  
+
+      // Helper para preencher campo com suporte a shadow DOM (Ionic)
+      const fillField = (fieldName, dataCy, value, options = {}) => {
+        cy.log(`📝 Preenchendo campo ${fieldName}...`)
+        cy.get(`[data-cy="${dataCy}"]`, { timeout: 30000 })
+          .should('be.visible')
+          .then($el => {
+            const element = $el[0]
+            // Se tem shadowRoot (Ionic), atravessa o shadow DOM
+            if (element.shadowRoot) {
+              cy.log(`🔍 Campo ${fieldName} está em shadow DOM, atravessando...`)
+              cy.wrap($el).shadow().find('input, textarea').first()
+                .should('be.visible')
+                .clear({ force: true })
+                .type(value, { force: true, ...options })
+            } else {
+              // Light DOM - procura input dentro ou usa o próprio elemento
+              const input = $el.find('input, textarea').first()
+              if (input.length > 0) {
+                cy.log(`🔍 Campo ${fieldName} encontrado dentro do elemento`)
+                cy.wrap(input)
+                  .should('be.visible')
+                  .clear({ force: true })
+                  .type(value, { force: true, ...options })
+              } else {
+                // Se não encontrou input dentro, tenta usar o próprio elemento (caso o data-cy esteja no input)
+                cy.log(`🔍 Tentando usar o próprio elemento ${dataCy} como input`)
+                cy.wrap($el)
+                  .should('be.visible')
+                  .clear({ force: true })
+                  .type(value, { force: true, ...options })
+              }
+            }
+          })
+      }
+
       // Nome
-      this.els.nome()
-        .should('exist')
-        .clear({ force: true })
-        .type(nome, { force: true, delay: 5 })
-  
+      fillField('Nome', 'input-fullname', nome, { delay: 5 })
+
       // Email
-      this.els.email()
-        .should('exist')
-        .clear({ force: true })
-        .type(emailFinal, { force: true })
-  
+      fillField('Email', 'input-email', emailFinal)
+
       // Telefone
-      this.els.phone()
-        .should('exist')
-        .clear({ force: true })
-        .type(phoneFinal, { force: true })
-  
+      fillField('Telefone', 'input-phone', phoneFinal)
+
       // Senha
-      this.els.password()
-        .should('exist')
-        .clear({ force: true })
-        .type(senha, { force: true, log: false })
-  
+      fillField('Senha', 'input-password', senha, { log: false })
+
       // Confirma senha
-      this.els.passwordConfirm()
-        .should('exist')
-        .clear({ force: true })
-        .type(senha, { force: true, log: false })
-  
+      fillField('Confirma Senha', 'input-password-confirm', senha, { log: false })
+
       // CEP
-      this.els.zipcode()
-        .should('exist')
-        .clear({ force: true })
-        .type(cep, { force: true })
-  
+      fillField('CEP', 'input-zipcode', cep)
+
       // Número
-      this.els.addressNumber()
-        .should('exist')
-        .clear({ force: true })
-        .type(numero, { force: true })
+      fillField('Número', 'input-address-number', numero)
   
       // Aceite termos
       this.els.termos()
