@@ -148,6 +148,9 @@ module.exports = defineConfig({
 
     includeShadowDom: true,
 
+    // Desabilitar isolamento entre testes para manter estado da sessão
+    testIsolation: false,
+
     viewportWidth: 1280,
     viewportHeight: 720,
 

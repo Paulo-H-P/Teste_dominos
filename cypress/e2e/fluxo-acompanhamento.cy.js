@@ -15,6 +15,11 @@ import { qase } from 'cypress-qase-reporter/mocha'
 // Caso Qase #2: Cadastro + login pedido + pagamento + acompanhamento
 // Configuração: 05 Feb 2026 13:27:58
 describe('Home → Cadastro', qase(2, () => {    
+    // Manter estado entre testes - verificar URL atual e continuar
+    beforeEach(() => {
+      cy.log('🔄 Verificando estado atual da sessão')
+      // Não limpa cookies/localStorage - mantém estado entre testes
+    })
 
     it('ETAPA 1-2: Acessar e validar Home', qase(3, () => {
       cy.log('🚀 =========================================')
