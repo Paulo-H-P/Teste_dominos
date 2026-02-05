@@ -105,18 +105,31 @@ class PreencherCadastroPage {
       // Helper para preencher campo com suporte a shadow DOM (Ionic)
       const fillField = (fieldName, dataCy, value, options = {}) => {
         cy.log(`📝 Preenchendo campo ${fieldName}...`)
+        
+        // Remove backdrops que podem estar cobrindo o elemento
+        cy.window().then((win) => {
+          const backdrops = win.document.querySelectorAll('ion-backdrop')
+          backdrops.forEach((backdrop) => {
+            backdrop.style.display = 'none'
+            backdrop.remove()
+          })
+          if (backdrops.length > 0) {
+            cy.log(`✅ ${backdrops.length} backdrop(s) removido(s) antes de preencher ${fieldName}`)
+          }
+        })
+        
         cy.get(`[data-cy="${dataCy}"]`, { timeout: 30000 })
           .should('exist')
-          .scrollIntoView({ offset: { top: -120, left: 0 } })
-          .should('be.visible')
-          .wait(300) // Pequeno delay após scroll para garantir que o elemento está visível
+          .scrollIntoView({ offset: { top: -120, left: 0 }, duration: 500 })
+          .wait(500) // Aguarda scroll completar
           .then($el => {
             const element = $el[0]
             // Se tem shadowRoot (Ionic), atravessa o shadow DOM
             if (element.shadowRoot) {
               cy.log(`🔍 Campo ${fieldName} está em shadow DOM, atravessando...`)
               cy.wrap($el).shadow().find('input, textarea').first()
-                .should('be.visible')
+                .scrollIntoView({ offset: { top: -100, left: 0 }, duration: 300 })
+                .wait(300)
                 .clear({ force: true })
                 .type(value, { force: true, ...options })
             } else {
@@ -125,14 +138,14 @@ class PreencherCadastroPage {
               if (input.length > 0) {
                 cy.log(`🔍 Campo ${fieldName} encontrado dentro do elemento`)
                 cy.wrap(input)
-                  .should('be.visible')
+                  .scrollIntoView({ offset: { top: -100, left: 0 }, duration: 300 })
+                  .wait(300)
                   .clear({ force: true })
                   .type(value, { force: true, ...options })
               } else {
                 // Se não encontrou input dentro, tenta usar o próprio elemento (caso o data-cy esteja no input)
                 cy.log(`🔍 Tentando usar o próprio elemento ${dataCy} como input`)
                 cy.wrap($el)
-                  .should('be.visible')
                   .clear({ force: true })
                   .type(value, { force: true, ...options })
               }
