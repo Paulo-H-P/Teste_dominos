@@ -133,6 +133,12 @@ module.exports = defineConfig({
           launchOptions.args.push('--disable-renderer-backgrounding')
           launchOptions.args.push('--disable-backgrounding-occluded-windows')
           launchOptions.args.push('--disable-ipc-flooding-protection')
+          // Flags adicionais para melhorar conexão no CI
+          launchOptions.args.push('--disable-setuid-sandbox')
+          launchOptions.args.push('--disable-web-security')
+          launchOptions.args.push('--disable-features=IsolateOrigins,site-per-process')
+          launchOptions.args.push('--disable-site-isolation-trials')
+          launchOptions.args.push('--remote-debugging-port=9222')
         }
         return launchOptions
       })
