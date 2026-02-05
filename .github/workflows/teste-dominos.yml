@@ -22,7 +22,7 @@ jobs:
     
     env:
       QASE_MODE: testops
-      QASE_API_TOKEN: ${{ secrets.QASE_TOKEN }}
+      QASE_API_TOKEN: ${{ secrets.QASE_TOKEN || secrets.QASE_API_TOKEN }}
       QASE_PROJECT_CODE: DOMINOS
       CYPRESS_BASE_URL: https://app.dominos.com.br
 

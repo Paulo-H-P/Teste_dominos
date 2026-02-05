@@ -14,7 +14,7 @@ module.exports = defineConfig({
       debug: true,      // Mostra logs detalhados (útil para debug)
       testops: {
         api: {
-          token: process.env.QASE_API_TOKEN || process.env.QASE_TOKEN,
+          token: process.env.QASE_API_TOKEN || process.env.QASE_TOKEN || process.env.QASE_TESTOPS_API_TOKEN,
         },
         project: process.env.QASE_PROJECT_CODE,
         uploadAttachments: true,  // Envia screenshots e vídeos
@@ -43,7 +43,7 @@ module.exports = defineConfig({
       // ✅ Debug de variáveis de ambiente (útil para verificar configuração)
       console.log('📋 Configuração do Qase:')
       console.log(`   QASE_MODE: ${process.env.QASE_MODE || '❌ Não configurado (deve ser "testops")'}`)
-      console.log(`   QASE_API_TOKEN: ${process.env.QASE_API_TOKEN || process.env.QASE_TOKEN ? '✅ Configurado' : '❌ Não configurado'}`)
+      console.log(`   QASE_API_TOKEN: ${process.env.QASE_API_TOKEN || process.env.QASE_TOKEN || process.env.QASE_TESTOPS_API_TOKEN ? '✅ Configurado' : '❌ Não configurado'}`)
       console.log(`   QASE_PROJECT_CODE: ${process.env.QASE_PROJECT_CODE || '❌ Não configurado'}`)
       
       if (process.env.QASE_MODE !== 'testops') {
