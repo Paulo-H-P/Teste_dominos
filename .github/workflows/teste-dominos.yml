@@ -49,6 +49,19 @@ jobs:
           fi
           echo "✅ package-lock.json encontrado"
 
+      - name: Verify Qase configuration
+        run: |
+          if [ -z "${{ secrets.QASE_TOKEN }}" ] && [ -z "${{ secrets.QASE_API_TOKEN }}" ]; then
+            echo "⚠️ ATENÇÃO: QASE_TOKEN ou QASE_API_TOKEN não está configurado!"
+            echo "📋 Para configurar:"
+            echo "   1. Acesse: https://github.com/${{ github.repository }}/settings/secrets/actions"
+            echo "   2. Crie um secret chamado 'QASE_TOKEN'"
+            echo "   3. Cole o token do Qase (obtenha em: https://app.qase.io/settings/api)"
+            echo "⚠️ Os testes continuarão, mas os resultados NÃO serão enviados ao Qase"
+          else
+            echo "✅ Qase token configurado"
+          fi
+
       - name: Clear Cypress cache (force fresh install)
         run: |
           rm -rf node_modules/.cache

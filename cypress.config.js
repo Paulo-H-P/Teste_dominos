@@ -41,13 +41,28 @@ module.exports = defineConfig({
       allureCypress(on, config, { resultsDir: 'allure-results' })
       
       // ✅ Debug de variáveis de ambiente (útil para verificar configuração)
+      const qaseToken = process.env.QASE_API_TOKEN || process.env.QASE_TOKEN || process.env.QASE_TESTOPS_API_TOKEN
+      
       console.log('📋 Configuração do Qase:')
       console.log(`   QASE_MODE: ${process.env.QASE_MODE || '❌ Não configurado (deve ser "testops")'}`)
-      console.log(`   QASE_API_TOKEN: ${process.env.QASE_API_TOKEN || process.env.QASE_TOKEN || process.env.QASE_TESTOPS_API_TOKEN ? '✅ Configurado' : '❌ Não configurado'}`)
+      console.log(`   QASE_API_TOKEN: ${qaseToken ? '✅ Configurado' : '❌ Não configurado'}`)
       console.log(`   QASE_PROJECT_CODE: ${process.env.QASE_PROJECT_CODE || '❌ Não configurado'}`)
       
       if (process.env.QASE_MODE !== 'testops') {
         console.warn('⚠️ ATENÇÃO: QASE_MODE deve ser "testops" para enviar resultados ao Qase!')
+      }
+      
+      if (!qaseToken && process.env.QASE_MODE === 'testops') {
+        console.error('')
+        console.error('❌ ==========================================')
+        console.error('❌ ERRO: QASE_TOKEN não está configurado!')
+        console.error('❌ ==========================================')
+        console.error('📋 Para configurar:')
+        console.error('   1. Acesse: https://github.com/Paulo-H-P/Teste_dominos/settings/secrets/actions')
+        console.error('   2. Crie um secret chamado "QASE_TOKEN"')
+        console.error('   3. Cole o token do Qase (obtenha em: https://app.qase.io/settings/api)')
+        console.error('⚠️ Os testes continuarão, mas os resultados NÃO serão enviados ao Qase')
+        console.error('')
       }
       
       // 📁 Registrar plugins do Cypress
