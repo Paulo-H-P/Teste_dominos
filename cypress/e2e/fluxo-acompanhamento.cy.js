@@ -85,11 +85,11 @@ describe('Home → Cadastro', qase(2, () => {
       cy.log('✅ =========================================')
 
 
-
+      
 
 
       
-
+    
     })
 }))  // 👈 Note os DOIS parênteses fechando: um para qase() e um para describe()  
 
