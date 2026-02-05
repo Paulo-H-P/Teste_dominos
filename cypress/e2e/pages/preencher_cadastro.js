@@ -106,7 +106,10 @@ class PreencherCadastroPage {
       const fillField = (fieldName, dataCy, value, options = {}) => {
         cy.log(`📝 Preenchendo campo ${fieldName}...`)
         cy.get(`[data-cy="${dataCy}"]`, { timeout: 30000 })
+          .should('exist')
+          .scrollIntoView({ offset: { top: -120, left: 0 } })
           .should('be.visible')
+          .wait(300) // Pequeno delay após scroll para garantir que o elemento está visível
           .then($el => {
             const element = $el[0]
             // Se tem shadowRoot (Ionic), atravessa o shadow DOM
