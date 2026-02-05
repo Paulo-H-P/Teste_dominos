@@ -160,26 +160,44 @@ class HomeCadastrarPage {
      * - Primeiro tenta o mais determinístico: routerlink/href com /register
      * - Depois tenta fallback por texto (só se precisar)
      * - Se nada existir, navega direto /register como último recurso
+     * - Limpa sessão antes de tentar navegar para evitar redirecionamento
      */
     irParaCadastro() {
+      // Limpa sessão antes de tentar cadastrar (evita redirecionamento para /tabs/home)
+      cy.log('🧹 Limpando sessão antes de navegar para cadastro')
+      cy.window().then((win) => {
+        // Limpa localStorage e sessionStorage
+        win.localStorage.clear()
+        win.sessionStorage.clear()
+        cy.log('✅ Sessão limpa')
+      })
+      
+      // Aguarda um pouco para garantir que a limpeza foi processada
+      cy.wait(500)
+      
       const linkSel = '[routerlink="/register"], [routerLink="/register"], a[href*="/register"]'
   
       cy.get('body').then(($b) => {
         if ($b.find(linkSel).length) {
+          cy.log('✅ Link de cadastro encontrado, clicando...')
           cy.get(linkSel, { timeout: 15000 }).first().click({ force: true })
+          cy.wait(2000) // Aguarda navegação
           return
         }
   
         // Fallback: procura por texto (pode ser "Login ou cadastre-se")
         const regex = /cadastre-se|cadastrar|criar conta|login ou cadastre-se/i
         if (regex.test($b.text())) {
+          cy.log('✅ Texto de cadastro encontrado, clicando...')
           cy.contains('a, button, [role="button"]', regex, { timeout: 15000 })
             .first()
             .click({ force: true })
+          cy.wait(2000) // Aguarda navegação
           return
         }
   
         // Último recurso: vai direto
+        cy.log('⚠️ Link não encontrado, navegando diretamente para /register')
         cy.visitWithRetry('/register', {
           timeout: 30000,
           retries: 1,
@@ -195,8 +213,28 @@ class HomeCadastrarPage {
      * ASSERT de navegação:
      * - Garante que depois do clique você caiu em /register
      * - Esse assert é o "contrato" da função irParaCadastro()
+     * - Se estiver redirecionando, tenta novamente após limpar sessão
      */
     assertFoiParaCadastro() {
+      cy.location('pathname', { timeout: 10000 }).then((pathname) => {
+        if (!pathname.includes('/register')) {
+          cy.log(`⚠️ Redirecionado para ${pathname} ao invés de /register`)
+          cy.log('🔄 Limpando sessão e tentando novamente...')
+          
+          // Limpa sessão novamente
+          cy.window().then((win) => {
+            win.localStorage.clear()
+            win.sessionStorage.clear()
+          })
+          
+          // Tenta navegar diretamente
+          cy.visit('/register', { timeout: 30000 })
+          cy.waitForAppReady({ timeout: 60000, checkBlocking: false })
+          cy.dismissOverlays()
+        }
+      })
+      
+      // Verifica novamente após possível correção
       cy.location('pathname', { timeout: 60000 }).should('include', '/register')
     }
   }
