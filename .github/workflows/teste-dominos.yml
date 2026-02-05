@@ -384,6 +384,7 @@ jobs:
 
       - name: Send test result e-mail
         if: always()  # executa independentemente do resultado dos testes
+        continue-on-error: true  # Não falha o workflow se o e-mail falhar
         uses: dawidd6/action-send-mail@v4
         with:
           server_address: smtp.gmail.com

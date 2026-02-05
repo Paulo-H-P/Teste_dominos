@@ -65,10 +65,37 @@ Após criar os secrets:
 - Verifique se os nomes dos secrets estão exatamente como mostrado acima
 - Verifique os logs do workflow na aba "Actions" do GitHub
 
-### Erro de autenticação SMTP
-- Verifique se a senha de app do Gmail está correta
-- Certifique-se de que a verificação em duas etapas está ativada no Gmail
-- Verifique se a senha de app foi gerada corretamente
+### Erro de autenticação SMTP (535-5.7.8 Username and Password not accepted)
+
+Este erro indica que o Gmail está rejeitando as credenciais. Siga estes passos:
+
+1. **Verificar se a verificação em duas etapas está ativada:**
+   - Acesse: https://myaccount.google.com/security
+   - Certifique-se de que a "Verificação em duas etapas" está **ATIVADA**
+   - Se não estiver, ative primeiro antes de criar a senha de app
+
+2. **Gerar uma nova senha de app:**
+   - Acesse: https://myaccount.google.com/apppasswords
+   - Se não aparecer, vá em: https://myaccount.google.com/security → "Senhas de app"
+   - Selecione **App:** "Mail" e **Dispositivo:** "Outro (nome personalizado)"
+   - Digite "GitHub Actions" e clique em **Gerar**
+   - **IMPORTANTE:** Copie a senha gerada (16 caracteres, sem espaços)
+   - Exemplo: `rcbgbnsfvbypvkxg` (sem espaços)
+
+3. **Atualizar o secret no GitHub:**
+   - Vá em: Settings → Secrets and variables → Actions
+   - Edite o secret `EMAIL_PASSWORD`
+   - Cole a nova senha de app (sem espaços)
+   - Clique em **Update secret**
+
+4. **Verificar o formato do e-mail:**
+   - O `EMAIL_USERNAME` deve ser o e-mail completo: `paulohenrique@rfti.com.br`
+   - Não use espaços ou caracteres especiais
+
+5. **Se o erro persistir:**
+   - Tente gerar uma nova senha de app
+   - Verifique se não há espaços extras no secret
+   - Certifique-se de que está usando a senha de app (não a senha normal do Gmail)
 
 ### E-mails não chegam
 - Verifique a pasta de spam
