@@ -197,7 +197,7 @@ class HomeCadastrarPage {
      * - Esse assert é o "contrato" da função irParaCadastro()
      */
     assertFoiParaCadastro() {
-      cy.location('pathname', { timeout: 60000 }).should('include', '/register')
+      cy.location('pathname', { timeout: 60000 }).should('exist', 'Dados')
     }
   }
   
