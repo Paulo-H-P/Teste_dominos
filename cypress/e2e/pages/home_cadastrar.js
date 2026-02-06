@@ -160,13 +160,25 @@ class HomeCadastrarPage {
      * - Primeiro tenta o mais determinístico: routerlink/href com /register
      * - Depois tenta fallback por texto (só se precisar)
      * - Se nada existir, navega direto /register como último recurso
+     * - Limpa sessão antes de navegar para evitar redirecionamento para /tabs/home
      */
     irParaCadastro() {
+      // Limpa sessão antes de tentar cadastrar (evita redirecionamento para /tabs/home)
+      cy.log('🧹 Limpando sessão antes de navegar para cadastro')
+      cy.clearCookies()
+      cy.clearLocalStorage()
+      cy.window().then((win) => {
+        win.localStorage.clear()
+        win.sessionStorage.clear()
+      })
+      cy.wait(1000) // Aguarda limpeza processar
+      
       const linkSel = '[routerlink="/register"], [routerLink="/register"], a[href*="/register"]'
   
       cy.get('body').then(($b) => {
         if ($b.find(linkSel).length) {
           cy.get(linkSel, { timeout: 15000 }).first().click({ force: true })
+          cy.wait(2000) // Aguarda navegação
           return
         }
   
@@ -176,6 +188,7 @@ class HomeCadastrarPage {
           cy.contains('a, button, [role="button"]', regex, { timeout: 15000 })
             .first()
             .click({ force: true })
+          cy.wait(2000) // Aguarda navegação
           return
         }
   
@@ -197,7 +210,7 @@ class HomeCadastrarPage {
      * - Esse assert é o "contrato" da função irParaCadastro()
      */
     assertFoiParaCadastro() {
-      cy.location('pathname', { timeout: 60000 }).should('exist', 'Dados')
+      cy.location('pathname', { timeout: 60000 }).should('include', '/register')
     }
   }
   
