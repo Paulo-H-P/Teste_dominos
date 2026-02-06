@@ -120,9 +120,10 @@ module.exports = defineConfig({
         }
       })
       
-      // Configura flags do Chrome para CI (Linux) - mais flags para melhorar conexão
+      // Configura flags do Chrome para CI (Linux) - flags essenciais para conexão
       on('before:browser:launch', (browser = {}, launchOptions) => {
         if (browser.family === 'chromium' && browser.name !== 'electron') {
+          // Flags essenciais para CI
           launchOptions.args.push('--no-sandbox')
           launchOptions.args.push('--disable-dev-shm-usage')
           launchOptions.args.push('--disable-gpu')
@@ -133,12 +134,11 @@ module.exports = defineConfig({
           launchOptions.args.push('--disable-renderer-backgrounding')
           launchOptions.args.push('--disable-backgrounding-occluded-windows')
           launchOptions.args.push('--disable-ipc-flooding-protection')
-          // Flags adicionais para melhorar conexão no CI
+          // Flags adicionais para melhorar estabilidade no CI
           launchOptions.args.push('--disable-setuid-sandbox')
-          launchOptions.args.push('--disable-web-security')
           launchOptions.args.push('--disable-features=IsolateOrigins,site-per-process')
           launchOptions.args.push('--disable-site-isolation-trials')
-          launchOptions.args.push('--remote-debugging-port=9222')
+          // Não especificar porta fixa - deixa o Cypress escolher
         }
         return launchOptions
       })
