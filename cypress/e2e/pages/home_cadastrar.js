@@ -112,23 +112,45 @@ class HomeCadastrarPage {
         }
       })
 
-      // Tenta encontrar QUALQUER root típico de SPA (com timeout)
-      // Se falhar, o Cypress vai capturar screenshot automaticamente
-      cy.get(roots, { timeout: 60000 })
-        .should('exist')
-        .then(() => {
-          cy.log('✅ App carregado: root encontrado')
-          
-          // Identifica qual root foi encontrado
-          cy.get('body').then(($body) => {
-            const rootEncontrado = roots.split(', ').find((root) => {
-              return $body.find(root).length > 0
-            })
-            if (rootEncontrado) {
-              cy.log(`✅ Root encontrado: ${rootEncontrado}`)
-            }
+      // Tenta encontrar QUALQUER root típico de SPA (com timeout maior e múltiplas tentativas)
+      // Aguarda mais tempo e tenta múltiplas vezes antes de falhar
+      cy.wait(5000) // Aguarda 5 segundos para o app carregar
+      
+      // Tenta encontrar o root com timeout maior
+      cy.get('body', { timeout: 90000 }).then(($body) => {
+        let tentativas = 0
+        const maxTentativas = 6 // 6 tentativas de 15 segundos = 90 segundos total
+        
+        const tentarEncontrarRoot = () => {
+          tentativas++
+          const rootEncontrado = roots.split(', ').find((root) => {
+            return $body.find(root).length > 0
           })
-        })
+          
+          if (rootEncontrado) {
+            cy.log(`✅ App carregado: root encontrado (${rootEncontrado}) após ${tentativas} tentativa(s)`)
+            return true
+          }
+          
+          if (tentativas < maxTentativas) {
+            cy.log(`⏳ Tentativa ${tentativas}/${maxTentativas}: App ainda não detectado, aguardando...`)
+            cy.wait(15000) // Aguarda 15 segundos antes de tentar novamente
+            return cy.get('body', { timeout: 10000 }).then(($body2) => {
+              $body = $body2
+              return tentarEncontrarRoot()
+            })
+          }
+          
+          return false
+        }
+        
+        const encontrou = tentarEncontrarRoot()
+        if (!encontrou) {
+          cy.log('❌ App não foi detectado após múltiplas tentativas')
+          // Tenta uma última vez com assert (vai falhar mas com melhor mensagem)
+          cy.get(roots, { timeout: 30000 }).should('exist')
+        }
+      })
     }
   
     /**
