@@ -14,7 +14,7 @@ module.exports = defineConfig({
       debug: true,      // Mostra logs detalhados (útil para debug)
       testops: {
         api: {
-          token: process.env.QASE_API_TOKEN || process.env.QASE_TOKEN || process.env.QASE_TESTOPS_API_TOKEN,
+          token: process.env.QASE_API_TOKEN || process.env.QASE_TOKEN,
         },
         project: process.env.QASE_PROJECT_CODE,
         uploadAttachments: true,  // Envia screenshots e vídeos
@@ -41,28 +41,13 @@ module.exports = defineConfig({
       allureCypress(on, config, { resultsDir: 'allure-results' })
       
       // ✅ Debug de variáveis de ambiente (útil para verificar configuração)
-      const qaseToken = process.env.QASE_API_TOKEN || process.env.QASE_TOKEN || process.env.QASE_TESTOPS_API_TOKEN
-      
       console.log('📋 Configuração do Qase:')
       console.log(`   QASE_MODE: ${process.env.QASE_MODE || '❌ Não configurado (deve ser "testops")'}`)
-      console.log(`   QASE_API_TOKEN: ${qaseToken ? '✅ Configurado' : '❌ Não configurado'}`)
+      console.log(`   QASE_API_TOKEN: ${process.env.QASE_API_TOKEN || process.env.QASE_TOKEN ? '✅ Configurado' : '❌ Não configurado'}`)
       console.log(`   QASE_PROJECT_CODE: ${process.env.QASE_PROJECT_CODE || '❌ Não configurado'}`)
       
       if (process.env.QASE_MODE !== 'testops') {
         console.warn('⚠️ ATENÇÃO: QASE_MODE deve ser "testops" para enviar resultados ao Qase!')
-      }
-      
-      if (!qaseToken && process.env.QASE_MODE === 'testops') {
-        console.error('')
-        console.error('❌ ==========================================')
-        console.error('❌ ERRO: QASE_TOKEN não está configurado!')
-        console.error('❌ ==========================================')
-        console.error('📋 Para configurar:')
-        console.error('   1. Acesse: https://github.com/Paulo-H-P/Teste_dominos/settings/secrets/actions')
-        console.error('   2. Crie um secret chamado "QASE_TOKEN"')
-        console.error('   3. Cole o token do Qase (obtenha em: https://app.qase.io/settings/api)')
-        console.error('⚠️ Os testes continuarão, mas os resultados NÃO serão enviados ao Qase')
-        console.error('')
       }
       
       // 📁 Registrar plugins do Cypress
@@ -120,10 +105,9 @@ module.exports = defineConfig({
         }
       })
       
-      // Configura flags do Chrome para CI (Linux) - flags essenciais para conexão
+      // Configura flags do Chrome para CI (Linux) - mais flags para melhorar conexão
       on('before:browser:launch', (browser = {}, launchOptions) => {
         if (browser.family === 'chromium' && browser.name !== 'electron') {
-          // Flags essenciais para CI
           launchOptions.args.push('--no-sandbox')
           launchOptions.args.push('--disable-dev-shm-usage')
           launchOptions.args.push('--disable-gpu')
@@ -134,11 +118,6 @@ module.exports = defineConfig({
           launchOptions.args.push('--disable-renderer-backgrounding')
           launchOptions.args.push('--disable-backgrounding-occluded-windows')
           launchOptions.args.push('--disable-ipc-flooding-protection')
-          // Flags adicionais para melhorar estabilidade no CI
-          launchOptions.args.push('--disable-setuid-sandbox')
-          launchOptions.args.push('--disable-features=IsolateOrigins,site-per-process')
-          launchOptions.args.push('--disable-site-isolation-trials')
-          // Não especificar porta fixa - deixa o Cypress escolher
         }
         return launchOptions
       })
@@ -153,9 +132,6 @@ module.exports = defineConfig({
     supportFile: 'cypress/support/e2e.js',
 
     includeShadowDom: true,
-
-    // Desabilitar isolamento entre testes para manter estado da sessão
-    testIsolation: false,
 
     viewportWidth: 1280,
     viewportHeight: 720,

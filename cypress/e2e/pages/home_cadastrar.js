@@ -112,45 +112,23 @@ class HomeCadastrarPage {
         }
       })
 
-      // Tenta encontrar QUALQUER root típico de SPA (com timeout maior e múltiplas tentativas)
-      // Aguarda mais tempo e tenta múltiplas vezes antes de falhar
-      cy.wait(5000) // Aguarda 5 segundos para o app carregar
-      
-      // Tenta encontrar o root com timeout maior
-      cy.get('body', { timeout: 90000 }).then(($body) => {
-        let tentativas = 0
-        const maxTentativas = 6 // 6 tentativas de 15 segundos = 90 segundos total
-        
-        const tentarEncontrarRoot = () => {
-          tentativas++
-          const rootEncontrado = roots.split(', ').find((root) => {
-            return $body.find(root).length > 0
-          })
+      // Tenta encontrar QUALQUER root típico de SPA (com timeout)
+      // Se falhar, o Cypress vai capturar screenshot automaticamente
+      cy.get(roots, { timeout: 60000 })
+        .should('exist')
+        .then(() => {
+          cy.log('✅ App carregado: root encontrado')
           
-          if (rootEncontrado) {
-            cy.log(`✅ App carregado: root encontrado (${rootEncontrado}) após ${tentativas} tentativa(s)`)
-            return true
-          }
-          
-          if (tentativas < maxTentativas) {
-            cy.log(`⏳ Tentativa ${tentativas}/${maxTentativas}: App ainda não detectado, aguardando...`)
-            cy.wait(15000) // Aguarda 15 segundos antes de tentar novamente
-            return cy.get('body', { timeout: 10000 }).then(($body2) => {
-              $body = $body2
-              return tentarEncontrarRoot()
+          // Identifica qual root foi encontrado
+          cy.get('body').then(($body) => {
+            const rootEncontrado = roots.split(', ').find((root) => {
+              return $body.find(root).length > 0
             })
-          }
-          
-          return false
-        }
-        
-        const encontrou = tentarEncontrarRoot()
-        if (!encontrou) {
-          cy.log('❌ App não foi detectado após múltiplas tentativas')
-          // Tenta uma última vez com assert (vai falhar mas com melhor mensagem)
-          cy.get(roots, { timeout: 30000 }).should('exist')
-        }
-      })
+            if (rootEncontrado) {
+              cy.log(`✅ Root encontrado: ${rootEncontrado}`)
+            }
+          })
+        })
     }
   
     /**
@@ -182,46 +160,26 @@ class HomeCadastrarPage {
      * - Primeiro tenta o mais determinístico: routerlink/href com /register
      * - Depois tenta fallback por texto (só se precisar)
      * - Se nada existir, navega direto /register como último recurso
-     * - Limpa sessão antes de tentar navegar para evitar redirecionamento
      */
     irParaCadastro() {
-      // Limpa sessão antes de tentar cadastrar (evita redirecionamento para /tabs/home)
-      cy.log('🧹 Limpando sessão antes de navegar para cadastro')
-      cy.clearCookies()
-      cy.clearLocalStorage()
-      cy.window().then((win) => {
-        // Limpa localStorage e sessionStorage
-        win.localStorage.clear()
-        win.sessionStorage.clear()
-        cy.log('✅ Sessão limpa (cookies, localStorage, sessionStorage)')
-      })
-      
-      // Aguarda um pouco para garantir que a limpeza foi processada
-      cy.wait(1000)
-      
       const linkSel = '[routerlink="/register"], [routerLink="/register"], a[href*="/register"]'
   
       cy.get('body').then(($b) => {
         if ($b.find(linkSel).length) {
-          cy.log('✅ Link de cadastro encontrado, clicando...')
           cy.get(linkSel, { timeout: 15000 }).first().click({ force: true })
-          cy.wait(2000) // Aguarda navegação
           return
         }
   
         // Fallback: procura por texto (pode ser "Login ou cadastre-se")
         const regex = /cadastre-se|cadastrar|criar conta|login ou cadastre-se/i
         if (regex.test($b.text())) {
-          cy.log('✅ Texto de cadastro encontrado, clicando...')
           cy.contains('a, button, [role="button"]', regex, { timeout: 15000 })
             .first()
             .click({ force: true })
-          cy.wait(2000) // Aguarda navegação
           return
         }
   
         // Último recurso: vai direto
-        cy.log('⚠️ Link não encontrado, navegando diretamente para /register')
         cy.visitWithRetry('/register', {
           timeout: 30000,
           retries: 1,
@@ -237,28 +195,8 @@ class HomeCadastrarPage {
      * ASSERT de navegação:
      * - Garante que depois do clique você caiu em /register
      * - Esse assert é o "contrato" da função irParaCadastro()
-     * - Se estiver redirecionando, tenta novamente após limpar sessão
      */
     assertFoiParaCadastro() {
-      cy.location('pathname', { timeout: 10000 }).then((pathname) => {
-        if (!pathname.includes('/register')) {
-          cy.log(`⚠️ Redirecionado para ${pathname} ao invés de /register`)
-          cy.log('🔄 Limpando sessão e tentando novamente...')
-          
-          // Limpa sessão novamente
-          cy.window().then((win) => {
-            win.localStorage.clear()
-            win.sessionStorage.clear()
-          })
-          
-          // Tenta navegar diretamente
-          cy.visit('/register', { timeout: 30000 })
-          cy.waitForAppReady({ timeout: 60000, checkBlocking: false })
-          cy.dismissOverlays()
-        }
-      })
-      
-      // Verifica novamente após possível correção
       cy.location('pathname', { timeout: 60000 }).should('include', '/register')
     }
   }
