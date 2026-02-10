@@ -78,6 +78,7 @@ jobs:
       - name: Run Cypress tests
         id: cypress
         shell: bash
+        continue-on-error: true
         run: |
           export TERM=xterm
           
@@ -392,6 +393,20 @@ jobs:
             echo "📊 Relatório disponível em: ${{ steps.pages-url.outputs.url }}"
           fi
 
+      - name: Format duration for email
+        if: always()
+        shell: bash
+        id: format-duration
+        run: |
+          duration_minutes="${{ steps.cypress.outputs.duration_minutes }}"
+          duration_seconds_formatted="${{ steps.cypress.outputs.duration_seconds_formatted }}"
+          
+          if [ -z "$duration_minutes" ] || [ -z "$duration_seconds_formatted" ]; then
+            echo "duration_formatted=N/A" >> "$GITHUB_OUTPUT"
+          else
+            echo "duration_formatted=${duration_minutes}:${duration_seconds_formatted}" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Collect error screenshots for email
         if: always() && steps.cypress.outputs.exit_code != '0'
         shell: bash
@@ -483,7 +498,7 @@ jobs:
                 <li><strong>Commit:</strong> <code>${{ github.sha }}</code></li>
                 <li><strong>Workflow:</strong> ${{ github.workflow }}</li>
                 <li><strong>Executado em:</strong> ${{ github.event.head_commit.timestamp }}</li>
-                <li><strong>Duração:</strong> ${{ steps.cypress.outputs.duration_minutes }}:${{ steps.cypress.outputs.duration_seconds_formatted }} minutos</li>
+                <li><strong>Duração:</strong> ${{ steps.format-duration.outputs.duration_formatted }} minutos</li>
               </ul>
               
               ${{ steps.cypress.outputs.exit_code != '0' && '<h3 style="color: #2c3e50;">📸 Screenshots de Erro</h3><p>Os screenshots de erro foram anexados a este e-mail. Verifique os anexos para ver os detalhes das falhas.</p>' || '' }}
