@@ -116,7 +116,8 @@ jobs:
           npx cypress run --browser chrome
           exit_code=$?
           
-          # Captura tempo de fim e calcula duração
+          # IMPORTANTE: Captura tempo de fim e calcula duração ANTES de qualquer outra coisa
+          # Isso garante que a duração seja calculada mesmo se houver erro
           end_time=$(date +%s)
           duration=$((end_time - start_time))
           duration_minutes=$((duration / 60))
@@ -135,13 +136,12 @@ jobs:
             echo "⚠️ ATENÇÃO: TESTE ULTRAPASSOU O LIMITE DE TEMPO"
             echo "⚠️ ========================================="
             echo "   Tempo limite: 3:30 minutos (210 segundos)"
-            echo "   Tempo de execução: ${duration_minutes}:${duration_seconds} minutos"
+            echo "   Tempo de execução: ${duration_minutes}:${duration_seconds_formatted} minutos"
             echo "   Diferença: $((duration - time_limit)) segundos acima do limite"
             echo ""
           fi
           
-          # Reabilita exit on error
-          set -e
+          # NÃO reabilitar set -e aqui - vamos manter set +e até definir todas as variáveis
           
           echo ""
           echo "✅ ========================================="
@@ -173,7 +173,12 @@ jobs:
             echo "Warning: allure-results directory not found"
           fi
           
+          # Reabilita exit on error apenas no final
+          set -e
+          
           # Always exit 0 to continue workflow (para gerar relatório mesmo se falhar)
+          # Mas primeiro desabilita novamente para garantir que não falhe
+          set +e
           exit 0
 
       - name: Generate Qase HTML report
