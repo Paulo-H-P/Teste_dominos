@@ -401,9 +401,15 @@ jobs:
           duration_minutes="${{ steps.cypress.outputs.duration_minutes }}"
           duration_seconds_formatted="${{ steps.cypress.outputs.duration_seconds_formatted }}"
           
-          if [ -z "$duration_minutes" ] || [ -z "$duration_seconds_formatted" ]; then
+          echo "🔍 Debug duração:"
+          echo "   duration_minutes: '$duration_minutes'"
+          echo "   duration_seconds_formatted: '$duration_seconds_formatted'"
+          
+          if [ -z "$duration_minutes" ] || [ "$duration_minutes" = "" ] || [ -z "$duration_seconds_formatted" ] || [ "$duration_seconds_formatted" = "" ]; then
+            echo "⚠️ Duração não disponível, usando N/A"
             echo "duration_formatted=N/A" >> "$GITHUB_OUTPUT"
           else
+            echo "✅ Duração formatada: ${duration_minutes}:${duration_seconds_formatted}"
             echo "duration_formatted=${duration_minutes}:${duration_seconds_formatted}" >> "$GITHUB_OUTPUT"
           fi
 
@@ -439,41 +445,46 @@ jobs:
           find cypress/screenshots -type f -name "*.png" | head -10
           
           # Encontrar todos os screenshots de falha (que contêm "failed" no nome)
-          screenshot_count=0
-          find cypress/screenshots -type f \( -name "*failed*.png" -o -name "*error*.png" \) | head -5 | while read screenshot; do
+          # Usar array para evitar problemas com subshells
+          screenshot_files=()
+          while IFS= read -r screenshot; do
             if [ -f "$screenshot" ]; then
               filename=$(basename "$screenshot")
               # Limpar nome do arquivo (remover caracteres especiais)
               clean_filename=$(echo "$filename" | sed 's/[^a-zA-Z0-9._-]/_/g')
               cp "$screenshot" "email-screenshots/$clean_filename"
-              screenshot_count=$((screenshot_count + 1))
+              screenshot_files+=("email-screenshots/$clean_filename")
               echo "✅ Screenshot coletado: $clean_filename"
             fi
-          done
+          done < <(find cypress/screenshots -type f \( -name "*failed*.png" -o -name "*error*.png" \) 2>/dev/null | head -5)
           
           # Se não encontrou screenshots com "failed", pega os últimos screenshots gerados
-          if [ ! "$(ls -A email-screenshots 2>/dev/null)" ]; then
+          if [ ${#screenshot_files[@]} -eq 0 ]; then
             echo "⚠️ Nenhum screenshot de falha encontrado, coletando últimos screenshots..."
-            find cypress/screenshots -type f -name "*.png" -printf '%T@ %p\n' 2>/dev/null | sort -rn | head -5 | cut -d' ' -f2- | while read screenshot; do
+            while IFS= read -r screenshot; do
               if [ -f "$screenshot" ]; then
                 filename=$(basename "$screenshot")
                 clean_filename=$(echo "$filename" | sed 's/[^a-zA-Z0-9._-]/_/g')
                 cp "$screenshot" "email-screenshots/$clean_filename"
-                screenshot_count=$((screenshot_count + 1))
+                screenshot_files+=("email-screenshots/$clean_filename")
                 echo "✅ Screenshot coletado: $clean_filename"
+                if [ ${#screenshot_files[@]} -ge 5 ]; then
+                  break
+                fi
               fi
-            done
+            done < <(find cypress/screenshots -type f -name "*.png" -printf '%T@ %p\n' 2>/dev/null | sort -rn | head -5 | cut -d' ' -f2-)
           fi
           
           # Listar screenshots coletados
-          if [ "$(ls -A email-screenshots 2>/dev/null)" ]; then
-            echo "📸 Screenshots coletados para e-mail:"
+          if [ ${#screenshot_files[@]} -gt 0 ]; then
+            echo "📸 Screenshots coletados para e-mail (${#screenshot_files[@]} arquivos):"
             ls -lh email-screenshots/
-            # Criar lista de anexos - a action espera caminhos separados por newline ou espaço
-            attachments=$(find email-screenshots -type f -name "*.png" | tr '\n' ' ' | sed 's/[[:space:]]*$//')
+            # Criar lista de anexos - a action espera caminhos separados por espaço
+            attachments=$(printf '%s ' "${screenshot_files[@]}" | sed 's/[[:space:]]*$//')
             echo "attachments=$attachments" >> $GITHUB_OUTPUT
             echo "has_screenshots=true" >> $GITHUB_OUTPUT
             echo "📎 Lista de anexos: $attachments"
+            echo "📎 Número de anexos: ${#screenshot_files[@]}"
           else
             echo "⚠️ Nenhum screenshot encontrado para anexar"
             echo "has_screenshots=false" >> $GITHUB_OUTPUT
