@@ -493,7 +493,6 @@ jobs:
           from: GitHub CI <${{ secrets.EMAIL_USERNAME }}>
           secure: false
           attachments: ${{ steps.collect-screenshots.outputs.has_screenshots == 'true' && steps.collect-screenshots.outputs.attachments || '' }}
-          attachments_content_type: image/png
           html_body: |
             <html>
             <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
