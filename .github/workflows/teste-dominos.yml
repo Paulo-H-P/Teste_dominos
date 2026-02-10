@@ -500,30 +500,25 @@ jobs:
           if [ ${#screenshot_files[@]} -gt 0 ]; then
             echo "📸 Screenshots coletados para e-mail (${#screenshot_files[@]} arquivos):"
             ls -lh email-screenshots/
-            # Criar lista de anexos - a action espera caminhos separados por newline
-            attachments_list=$(printf '%s\n' "${screenshot_files[@]}")
-            {
-              echo "attachments<<EOF"
-              echo "$attachments_list"
-              echo "EOF"
-              echo "has_screenshots=true"
-            } >> $GITHUB_OUTPUT
+            # Criar lista de anexos - a action espera caminhos separados por espaço
+            attachments_list=$(printf '%s ' "${screenshot_files[@]}" | sed 's/[[:space:]]*$//')
+            echo "attachments=$attachments_list" >> $GITHUB_OUTPUT
+            echo "has_screenshots=true" >> $GITHUB_OUTPUT
             echo "📎 Lista de anexos (${#screenshot_files[@]} arquivos):"
-            printf '%s\n' "${screenshot_files[@]}"
+            printf '  - %s\n' "${screenshot_files[@]}"
+            echo "📎 String de anexos: $attachments_list"
             echo "📤 Debug - has_screenshots=true"
-            echo "📤 Debug - attachments definido com multiline"
+            echo "📤 Debug - attachments definido"
           else
             echo "⚠️ Nenhum screenshot encontrado para anexar"
-            {
-              echo "has_screenshots=false"
-              echo "attachments="
-            } >> $GITHUB_OUTPUT
+            echo "has_screenshots=false" >> $GITHUB_OUTPUT
+            echo "attachments=" >> $GITHUB_OUTPUT
             echo "📤 Debug - has_screenshots=false"
           fi
           
           # Debug: mostrar o que foi escrito no GITHUB_OUTPUT
           echo "📋 Conteúdo do GITHUB_OUTPUT relacionado a screenshots:"
-          cat $GITHUB_OUTPUT | grep -A 10 "attachments" || echo "Nenhuma saída encontrada"
+          cat $GITHUB_OUTPUT | grep -E "(has_screenshots|attachments)" || echo "Nenhuma saída encontrada"
 
       - name: Debug before email
         if: always()
