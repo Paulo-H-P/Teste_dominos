@@ -393,6 +393,18 @@ jobs:
             echo "📊 Relatório disponível em: ${{ steps.pages-url.outputs.url }}"
           fi
 
+      - name: Debug outputs
+        if: always()
+        shell: bash
+        run: |
+          echo "🔍 Debug - Valores das saídas do step cypress:"
+          echo "   exit_code: '${{ steps.cypress.outputs.exit_code }}'"
+          echo "   duration: '${{ steps.cypress.outputs.duration }}'"
+          echo "   duration_minutes: '${{ steps.cypress.outputs.duration_minutes }}'"
+          echo "   duration_seconds: '${{ steps.cypress.outputs.duration_seconds }}'"
+          echo "   duration_seconds_formatted: '${{ steps.cypress.outputs.duration_seconds_formatted }}'"
+          echo "   time_exceeded: '${{ steps.cypress.outputs.time_exceeded }}'"
+
       - name: Format duration for email
         if: always()
         shell: bash
@@ -401,7 +413,7 @@ jobs:
           duration_minutes="${{ steps.cypress.outputs.duration_minutes }}"
           duration_seconds_formatted="${{ steps.cypress.outputs.duration_seconds_formatted }}"
           
-          echo "🔍 Debug duração:"
+          echo "🔍 Formatando duração:"
           echo "   duration_minutes: '$duration_minutes'"
           echo "   duration_seconds_formatted: '$duration_seconds_formatted'"
           
@@ -412,6 +424,8 @@ jobs:
             echo "✅ Duração formatada: ${duration_minutes}:${duration_seconds_formatted}"
             echo "duration_formatted=${duration_minutes}:${duration_seconds_formatted}" >> "$GITHUB_OUTPUT"
           fi
+          
+          echo "📤 Saída final: duration_formatted='$(cat $GITHUB_OUTPUT | grep duration_formatted || echo 'N/A')'"
 
       - name: Collect error screenshots for email
         if: always()
@@ -485,9 +499,31 @@ jobs:
             echo "has_screenshots=true" >> $GITHUB_OUTPUT
             echo "📎 Lista de anexos: $attachments"
             echo "📎 Número de anexos: ${#screenshot_files[@]}"
+            echo "📤 Debug - has_screenshots=true, attachments=$attachments"
           else
             echo "⚠️ Nenhum screenshot encontrado para anexar"
             echo "has_screenshots=false" >> $GITHUB_OUTPUT
+            echo "📤 Debug - has_screenshots=false"
+          fi
+          
+          # Debug: mostrar o que foi escrito no GITHUB_OUTPUT
+          echo "📋 Conteúdo do GITHUB_OUTPUT:"
+          cat $GITHUB_OUTPUT | grep -E "(has_screenshots|attachments)" || echo "Nenhuma saída encontrada"
+
+      - name: Debug before email
+        if: always()
+        shell: bash
+        run: |
+          echo "🔍 Debug antes de enviar e-mail:"
+          echo "   has_screenshots: '${{ steps.collect-screenshots.outputs.has_screenshots }}'"
+          echo "   attachments: '${{ steps.collect-screenshots.outputs.attachments }}'"
+          echo "   duration_formatted: '${{ steps.format-duration.outputs.duration_formatted }}'"
+          echo "   exit_code: '${{ steps.cypress.outputs.exit_code }}'"
+          if [ -d "email-screenshots" ]; then
+            echo "📸 Arquivos em email-screenshots:"
+            ls -lh email-screenshots/ || echo "Diretório vazio ou não existe"
+          else
+            echo "⚠️ Diretório email-screenshots não existe"
           fi
 
       - name: Send test result e-mail
@@ -503,7 +539,7 @@ jobs:
           to: ${{ secrets.NOTIFICATION_EMAILS }}
           from: GitHub CI <${{ secrets.EMAIL_USERNAME }}>
           secure: false
-          attachments: ${{ steps.collect-screenshots.outputs.has_screenshots == 'true' && steps.collect-screenshots.outputs.attachments || '' }}
+          attachments: ${{ steps.collect-screenshots.outputs.attachments }}
           html_body: |
             <html>
             <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
