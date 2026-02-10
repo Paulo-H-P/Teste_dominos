@@ -408,57 +408,74 @@ jobs:
           fi
 
       - name: Collect error screenshots for email
-        if: always() && steps.cypress.outputs.exit_code != '0'
+        if: always()
         shell: bash
         id: collect-screenshots
         run: |
+          EXIT_CODE="${{ steps.cypress.outputs.exit_code }}"
+          if [ -z "$EXIT_CODE" ]; then EXIT_CODE=1; fi
+          
           echo "📸 Coletando screenshots de erro para anexar no e-mail..."
+          echo "   Exit code: $EXIT_CODE"
+          
+          # Só coleta screenshots se houve falha
+          if [ "$EXIT_CODE" = "0" ]; then
+            echo "✅ Testes passaram - não há screenshots de erro para anexar"
+            echo "has_screenshots=false" >> $GITHUB_OUTPUT
+            exit 0
+          fi
           
           # Criar diretório temporário para screenshots de erro
           mkdir -p email-screenshots
           
+          # Verificar se o diretório de screenshots existe
+          if [ ! -d "cypress/screenshots" ]; then
+            echo "⚠️ Diretório cypress/screenshots não encontrado"
+            echo "has_screenshots=false" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+          
+          echo "🔍 Procurando screenshots em: cypress/screenshots"
+          find cypress/screenshots -type f -name "*.png" | head -10
+          
           # Encontrar todos os screenshots de falha (que contêm "failed" no nome)
           screenshot_count=0
-          if [ -d "cypress/screenshots" ]; then
-            find cypress/screenshots -type f \( -name "*failed*.png" -o -name "*error*.png" \) | head -5 | while read screenshot; do
+          find cypress/screenshots -type f \( -name "*failed*.png" -o -name "*error*.png" \) | head -5 | while read screenshot; do
+            if [ -f "$screenshot" ]; then
+              filename=$(basename "$screenshot")
+              # Limpar nome do arquivo (remover caracteres especiais)
+              clean_filename=$(echo "$filename" | sed 's/[^a-zA-Z0-9._-]/_/g')
+              cp "$screenshot" "email-screenshots/$clean_filename"
+              screenshot_count=$((screenshot_count + 1))
+              echo "✅ Screenshot coletado: $clean_filename"
+            fi
+          done
+          
+          # Se não encontrou screenshots com "failed", pega os últimos screenshots gerados
+          if [ ! "$(ls -A email-screenshots 2>/dev/null)" ]; then
+            echo "⚠️ Nenhum screenshot de falha encontrado, coletando últimos screenshots..."
+            find cypress/screenshots -type f -name "*.png" -printf '%T@ %p\n' 2>/dev/null | sort -rn | head -5 | cut -d' ' -f2- | while read screenshot; do
               if [ -f "$screenshot" ]; then
                 filename=$(basename "$screenshot")
-                # Limpar nome do arquivo (remover caracteres especiais)
                 clean_filename=$(echo "$filename" | sed 's/[^a-zA-Z0-9._-]/_/g')
                 cp "$screenshot" "email-screenshots/$clean_filename"
                 screenshot_count=$((screenshot_count + 1))
                 echo "✅ Screenshot coletado: $clean_filename"
               fi
             done
-            
-            # Se não encontrou screenshots com "failed", pega os últimos screenshots gerados
-            if [ ! "$(ls -A email-screenshots 2>/dev/null)" ]; then
-              echo "⚠️ Nenhum screenshot de falha encontrado, coletando últimos screenshots..."
-              find cypress/screenshots -type f -name "*.png" -printf '%T@ %p\n' | sort -rn | head -3 | cut -d' ' -f2- | while read screenshot; do
-                if [ -f "$screenshot" ]; then
-                  filename=$(basename "$screenshot")
-                  clean_filename=$(echo "$filename" | sed 's/[^a-zA-Z0-9._-]/_/g')
-                  cp "$screenshot" "email-screenshots/$clean_filename"
-                  screenshot_count=$((screenshot_count + 1))
-                  echo "✅ Screenshot coletado: $clean_filename"
-                fi
-              done
-            fi
-            
-            # Listar screenshots coletados
-            if [ "$(ls -A email-screenshots 2>/dev/null)" ]; then
-              echo "📸 Screenshots coletados para e-mail:"
-              ls -lh email-screenshots/
-              # Criar lista de anexos separada por espaço
-              attachments=$(find email-screenshots -type f -name "*.png" | tr '\n' ' ')
-              echo "attachments=$attachments" >> $GITHUB_OUTPUT
-              echo "has_screenshots=true" >> $GITHUB_OUTPUT
-            else
-              echo "⚠️ Nenhum screenshot encontrado para anexar"
-              echo "has_screenshots=false" >> $GITHUB_OUTPUT
-            fi
+          fi
+          
+          # Listar screenshots coletados
+          if [ "$(ls -A email-screenshots 2>/dev/null)" ]; then
+            echo "📸 Screenshots coletados para e-mail:"
+            ls -lh email-screenshots/
+            # Criar lista de anexos - a action espera caminhos separados por newline ou espaço
+            attachments=$(find email-screenshots -type f -name "*.png" | tr '\n' ' ' | sed 's/[[:space:]]*$//')
+            echo "attachments=$attachments" >> $GITHUB_OUTPUT
+            echo "has_screenshots=true" >> $GITHUB_OUTPUT
+            echo "📎 Lista de anexos: $attachments"
           else
-            echo "⚠️ Diretório cypress/screenshots não encontrado"
+            echo "⚠️ Nenhum screenshot encontrado para anexar"
             echo "has_screenshots=false" >> $GITHUB_OUTPUT
           fi
 
@@ -476,6 +493,7 @@ jobs:
           from: GitHub CI <${{ secrets.EMAIL_USERNAME }}>
           secure: false
           attachments: ${{ steps.collect-screenshots.outputs.has_screenshots == 'true' && steps.collect-screenshots.outputs.attachments || '' }}
+          attachments_content_type: image/png
           html_body: |
             <html>
             <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
