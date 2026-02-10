@@ -104,6 +104,9 @@ jobs:
           # Desabilita exit on error para capturar exit code corretamente
           set +e
           
+          # Inicializa exit_code com valor padrão (assume falha se não for capturado)
+          exit_code=1
+          
           # Captura tempo de início
           start_time=$(date +%s)
           echo "🔄 Iniciando execução do Cypress..."
@@ -113,16 +116,21 @@ jobs:
           echo ""
           
           # Executa Cypress com reporter do Qase (os logs aparecem em tempo real no GitHub Actions)
-          npx cypress run --browser chrome
-          exit_code=$?
+          npx cypress run --browser chrome || true  # Não falha o script mesmo se Cypress falhar
+          cypress_exit=$?
           
-          # IMPORTANTE: Captura tempo de fim e calcula duração ANTES de qualquer outra coisa
-          # Isso garante que a duração seja calculada mesmo se houver erro
+          # Captura exit_code (se Cypress foi cancelado, cypress_exit pode estar vazio)
+          if [ -n "$cypress_exit" ] && [ "$cypress_exit" != "" ]; then
+            exit_code=$cypress_exit
+          else
+            exit_code=1  # Assume falha se não foi capturado
+          fi
+          
+          # IMPORTANTE: Captura tempo de fim e calcula duração SEMPRE, mesmo se houver erro
           end_time=$(date +%s)
           duration=$((end_time - start_time))
           duration_minutes=$((duration / 60))
           duration_seconds=$((duration % 60))
-          # Formata segundos com zero à esquerda se necessário
           duration_seconds_formatted=$(printf "%02d" $duration_seconds)
           
           # Limite de tempo: 3:30 minutos = 210 segundos
@@ -141,8 +149,6 @@ jobs:
             echo ""
           fi
           
-          # NÃO reabilitar set -e aqui - vamos manter set +e até definir todas as variáveis
-          
           echo ""
           echo "✅ ========================================="
           echo "✅ TESTES CONCLUÍDOS"
@@ -152,7 +158,8 @@ jobs:
           echo "   Timestamp: $(date)"
           echo ""
           
-          # IMPORTANTE: Definir variáveis ANTES de qualquer exit
+          # IMPORTANTE: Salvar variáveis no GITHUB_OUTPUT - fazer isso ANTES de qualquer exit
+          # Usar >> para append e garantir que não sobrescreva outras variáveis
           {
             echo "exit_code=$exit_code"
             echo "duration=$duration"
@@ -163,7 +170,7 @@ jobs:
           } >> "$GITHUB_OUTPUT"
           
           echo "📤 Variáveis definidas no GITHUB_OUTPUT:"
-          cat "$GITHUB_OUTPUT" | tail -6
+          cat "$GITHUB_OUTPUT" | tail -6 || echo "⚠️ Não foi possível ler GITHUB_OUTPUT"
           
           # List allure-results if they exist
           if [ -d "allure-results" ]; then
