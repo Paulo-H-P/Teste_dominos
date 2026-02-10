@@ -148,15 +148,22 @@ jobs:
           echo "✅ TESTES CONCLUÍDOS"
           echo "✅ ========================================="
           echo "   Exit code: $exit_code"
-          echo "   Duração: ${duration_minutes}:${duration_seconds} minutos"
+          echo "   Duração: ${duration_minutes}:${duration_seconds_formatted} minutos"
           echo "   Timestamp: $(date)"
           echo ""
-          echo "exit_code=$exit_code" >> "$GITHUB_OUTPUT"
-          echo "duration=$duration" >> "$GITHUB_OUTPUT"
-          echo "duration_minutes=$duration_minutes" >> "$GITHUB_OUTPUT"
-          echo "duration_seconds=$duration_seconds" >> "$GITHUB_OUTPUT"
-          echo "duration_seconds_formatted=$duration_seconds_formatted" >> "$GITHUB_OUTPUT"
-          echo "time_exceeded=$time_exceeded" >> "$GITHUB_OUTPUT"
+          
+          # IMPORTANTE: Definir variáveis ANTES de qualquer exit
+          {
+            echo "exit_code=$exit_code"
+            echo "duration=$duration"
+            echo "duration_minutes=$duration_minutes"
+            echo "duration_seconds=$duration_seconds"
+            echo "duration_seconds_formatted=$duration_seconds_formatted"
+            echo "time_exceeded=$time_exceeded"
+          } >> "$GITHUB_OUTPUT"
+          
+          echo "📤 Variáveis definidas no GITHUB_OUTPUT:"
+          cat "$GITHUB_OUTPUT" | tail -6
           
           # List allure-results if they exist
           if [ -d "allure-results" ]; then
@@ -493,22 +500,30 @@ jobs:
           if [ ${#screenshot_files[@]} -gt 0 ]; then
             echo "📸 Screenshots coletados para e-mail (${#screenshot_files[@]} arquivos):"
             ls -lh email-screenshots/
-            # Criar lista de anexos - a action espera caminhos separados por espaço
-            attachments=$(printf '%s ' "${screenshot_files[@]}" | sed 's/[[:space:]]*$//')
-            echo "attachments=$attachments" >> $GITHUB_OUTPUT
-            echo "has_screenshots=true" >> $GITHUB_OUTPUT
-            echo "📎 Lista de anexos: $attachments"
-            echo "📎 Número de anexos: ${#screenshot_files[@]}"
-            echo "📤 Debug - has_screenshots=true, attachments=$attachments"
+            # Criar lista de anexos - a action espera caminhos separados por newline
+            attachments_list=$(printf '%s\n' "${screenshot_files[@]}")
+            {
+              echo "attachments<<EOF"
+              echo "$attachments_list"
+              echo "EOF"
+              echo "has_screenshots=true"
+            } >> $GITHUB_OUTPUT
+            echo "📎 Lista de anexos (${#screenshot_files[@]} arquivos):"
+            printf '%s\n' "${screenshot_files[@]}"
+            echo "📤 Debug - has_screenshots=true"
+            echo "📤 Debug - attachments definido com multiline"
           else
             echo "⚠️ Nenhum screenshot encontrado para anexar"
-            echo "has_screenshots=false" >> $GITHUB_OUTPUT
+            {
+              echo "has_screenshots=false"
+              echo "attachments="
+            } >> $GITHUB_OUTPUT
             echo "📤 Debug - has_screenshots=false"
           fi
           
           # Debug: mostrar o que foi escrito no GITHUB_OUTPUT
-          echo "📋 Conteúdo do GITHUB_OUTPUT:"
-          cat $GITHUB_OUTPUT | grep -E "(has_screenshots|attachments)" || echo "Nenhuma saída encontrada"
+          echo "📋 Conteúdo do GITHUB_OUTPUT relacionado a screenshots:"
+          cat $GITHUB_OUTPUT | grep -A 10 "attachments" || echo "Nenhuma saída encontrada"
 
       - name: Debug before email
         if: always()
@@ -539,7 +554,7 @@ jobs:
           to: ${{ secrets.NOTIFICATION_EMAILS }}
           from: GitHub CI <${{ secrets.EMAIL_USERNAME }}>
           secure: false
-          attachments: ${{ steps.collect-screenshots.outputs.attachments }}
+          attachments: ${{ steps.collect-screenshots.outputs.has_screenshots == 'true' && steps.collect-screenshots.outputs.attachments || '' }}
           html_body: |
             <html>
             <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
@@ -562,7 +577,7 @@ jobs:
                 <li><strong>Commit:</strong> <code>${{ github.sha }}</code></li>
                 <li><strong>Workflow:</strong> ${{ github.workflow }}</li>
                 <li><strong>Executado em:</strong> ${{ github.event.head_commit.timestamp }}</li>
-                <li><strong>Duração:</strong> ${{ steps.format-duration.outputs.duration_formatted }} minutos</li>
+                <li><strong>Duração:</strong> ${{ steps.format-duration.outputs.duration_formatted || 'N/A' }} minutos</li>
               </ul>
               
               ${{ steps.cypress.outputs.exit_code != '0' && '<h3 style="color: #2c3e50;">📸 Screenshots de Erro</h3><p>Os screenshots de erro foram anexados a este e-mail. Verifique os anexos para ver os detalhes das falhas.</p>' || '' }}
