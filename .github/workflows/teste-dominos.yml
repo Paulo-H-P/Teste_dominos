@@ -103,7 +103,8 @@ jobs:
           # Desabilita exit on error para capturar exit code corretamente
           set +e
           
-          # Run Cypress with Chrome - mostra logs detalhados em tempo real
+          # Captura tempo de início
+          start_time=$(date +%s)
           echo "🔄 Iniciando execução do Cypress..."
           echo "   Timestamp: $(date '+%Y-%m-%d %H:%M:%S')"
           echo "   Os logs abaixo mostram cada etapa do teste conforme executa"
@@ -114,6 +115,28 @@ jobs:
           npx cypress run --browser chrome
           exit_code=$?
           
+          # Captura tempo de fim e calcula duração
+          end_time=$(date +%s)
+          duration=$((end_time - start_time))
+          duration_minutes=$((duration / 60))
+          duration_seconds=$((duration % 60))
+          
+          # Limite de tempo: 3:30 minutos = 210 segundos
+          time_limit=210
+          time_exceeded=false
+          
+          if [ $duration -gt $time_limit ]; then
+            time_exceeded=true
+            echo ""
+            echo "⚠️ ========================================="
+            echo "⚠️ ATENÇÃO: TESTE ULTRAPASSOU O LIMITE DE TEMPO"
+            echo "⚠️ ========================================="
+            echo "   Tempo limite: 3:30 minutos (210 segundos)"
+            echo "   Tempo de execução: ${duration_minutes}:${duration_seconds} minutos"
+            echo "   Diferença: $((duration - time_limit)) segundos acima do limite"
+            echo ""
+          fi
+          
           # Reabilita exit on error
           set -e
           
@@ -122,9 +145,14 @@ jobs:
           echo "✅ TESTES CONCLUÍDOS"
           echo "✅ ========================================="
           echo "   Exit code: $exit_code"
+          echo "   Duração: ${duration_minutes}:${duration_seconds} minutos"
           echo "   Timestamp: $(date)"
           echo ""
           echo "exit_code=$exit_code" >> "$GITHUB_OUTPUT"
+          echo "duration=$duration" >> "$GITHUB_OUTPUT"
+          echo "duration_minutes=$duration_minutes" >> "$GITHUB_OUTPUT"
+          echo "duration_seconds=$duration_seconds" >> "$GITHUB_OUTPUT"
+          echo "time_exceeded=$time_exceeded" >> "$GITHUB_OUTPUT"
           
           # List allure-results if they exist
           if [ -d "allure-results" ]; then
@@ -478,12 +506,15 @@ jobs:
                 </p>
               </div>
               
+              ${{ steps.cypress.outputs.time_exceeded == 'true' && '<div style="background-color: #fff3cd; border: 2px solid #ffc107; padding: 15px; border-radius: 5px; margin: 20px 0;"><p style="margin: 0; font-size: 16px; color: #856404;"><strong>⚠️ ATENÇÃO: TESTE ULTRAPASSOU O LIMITE DE TEMPO</strong></p><p style="margin: 10px 0 0 0; color: #856404;">O teste demorou <strong>' || '' }}${{ steps.cypress.outputs.time_exceeded == 'true' && steps.cypress.outputs.duration_minutes || '' }}${{ steps.cypress.outputs.time_exceeded == 'true' && ':' || '' }}${{ steps.cypress.outputs.time_exceeded == 'true' && steps.cypress.outputs.duration_seconds || '' }}${{ steps.cypress.outputs.time_exceeded == 'true' && ' minutos</strong> para finalizar o cadastro+login+compra, ultrapassando o limite de <strong>3:30 minutos</strong>.</p></div>' || '' }}
+              
               <h3 style="color: #2c3e50;">📋 Informações da Execução</h3>
               <ul>
                 <li><strong>Branch:</strong> ${{ github.ref_name }}</li>
                 <li><strong>Commit:</strong> <code>${{ github.sha }}</code></li>
                 <li><strong>Workflow:</strong> ${{ github.workflow }}</li>
                 <li><strong>Executado em:</strong> ${{ github.event.head_commit.timestamp }}</li>
+                <li><strong>Duração:</strong> ${{ steps.cypress.outputs.duration_minutes }}:${{ steps.cypress.outputs.duration_seconds }} minutos</li>
               </ul>
               
               ${{ steps.cypress.outputs.exit_code != '0' && '<h3 style="color: #2c3e50;">📸 Screenshots de Erro</h3><p>Os screenshots de erro foram anexados a este e-mail. Verifique os anexos para ver os detalhes das falhas.</p>' || '' }}
