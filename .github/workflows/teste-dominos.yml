@@ -188,6 +188,45 @@ jobs:
           set +e
           exit 0
 
+      - name: Extract Qase run ID and generate link
+        if: always()
+        shell: bash
+        id: qase-link
+        run: |
+          echo "🔍 Extraindo Run ID do Qase dos logs..."
+          
+          # O Qase geralmente mostra nos logs: [DEBUG] qase: Test run created: {"status":true,"result":{"id":XXX}}
+          # Ou: [INFO] qase: Test run link: https://app.qase.io/run/DOMINOS/dashboard/XXX
+          
+          QASE_RUN_ID=""
+          QASE_LINK="https://app.qase.io/project/DOMINOS/runs"
+          
+          # Tentar encontrar o run ID em arquivos de log ou saída do Cypress
+          # Procurar por padrões comuns nos logs
+          if [ -f "cypress.log" ]; then
+            QASE_RUN_ID=$(grep -oP '"id":\s*\K\d+' cypress.log 2>/dev/null | head -1 || echo "")
+          fi
+          
+          # Se não encontrou, tentar buscar em qualquer arquivo que possa conter logs
+          if [ -z "$QASE_RUN_ID" ]; then
+            # Procurar por "Test run created" ou "Test run link" em arquivos
+            QASE_RUN_ID=$(find . -type f -name "*.log" -o -name "*.txt" 2>/dev/null | xargs grep -h "Test run created\|Test run link" 2>/dev/null | grep -oP '"id":\s*\K\d+' | head -1 || echo "")
+          fi
+          
+          # Se ainda não encontrou, usar link genérico (sempre funciona)
+          if [ -n "$QASE_RUN_ID" ] && [ "$QASE_RUN_ID" != "" ]; then
+            QASE_LINK="https://app.qase.io/project/DOMINOS/runs/$QASE_RUN_ID"
+            echo "✅ Run ID encontrado: $QASE_RUN_ID"
+            echo "🔗 Link do Qase: $QASE_LINK"
+          else
+            echo "ℹ️ Run ID não encontrado nos logs"
+            echo "🔗 Usando link genérico para página de runs: $QASE_LINK"
+            echo "   (Este link sempre funciona e mostra todos os runs do projeto)"
+          fi
+          
+          echo "qase_link=$QASE_LINK" >> "$GITHUB_OUTPUT"
+          echo "qase_run_id=$QASE_RUN_ID" >> "$GITHUB_OUTPUT"
+
       - name: Generate Qase HTML report
         if: always()
         shell: bash
@@ -694,8 +733,8 @@ jobs:
                 </li>
                 <li>
                   <strong>Qase Test Run:</strong> 
-                  <a href="https://app.qase.io/run/DOMINOS/dashboard" style="color: #007bff; text-decoration: none;">
-                    Ver no Qase
+                  <a href="${{ steps.qase-link.outputs.qase_link || 'https://app.qase.io/project/DOMINOS/runs' }}" style="color: #007bff; text-decoration: none;">
+                    Ver no Qase${{ steps.qase-link.outputs.qase_run_id != '' && ' (Run #' || '' }}${{ steps.qase-link.outputs.qase_run_id || '' }}${{ steps.qase-link.outputs.qase_run_id != '' && ')' || '' }}
                   </a>
                 </li>
               </ul>
