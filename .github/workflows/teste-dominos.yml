@@ -704,7 +704,15 @@ jobs:
                 </p>
               </div>
               
-              ${{ steps.cypress.outputs.time_exceeded == 'true' && '<div style="background-color: #fff3cd; border: 2px solid #ffc107; padding: 15px; border-radius: 5px; margin: 20px 0;"><p style="margin: 0; font-size: 16px; color: #856404;"><strong>⚠️ ATENÇÃO: TESTE ULTRAPASSOU O LIMITE DE TEMPO</strong></p><p style="margin: 10px 0 0 0; color: #856404;">O teste demorou <strong>' || '' }}${{ steps.cypress.outputs.time_exceeded == 'true' && steps.cypress.outputs.duration_minutes || '' }}${{ steps.cypress.outputs.time_exceeded == 'true' && ':' || '' }}${{ steps.cypress.outputs.time_exceeded == 'true' && steps.cypress.outputs.duration_seconds_formatted || '' }}${{ steps.cypress.outputs.time_exceeded == 'true' && ' minutos</strong> para finalizar o cadastro+login+compra, ultrapassando o limite de <strong>3:30 minutos</strong>.</p>' || '' }}${{ steps.cypress.outputs.time_exceeded == 'true' && steps.analyze-delay.outputs.delay_reason != '' && '<div style="margin-top: 15px; padding: 10px; background-color: #fff; border-left: 4px solid #ffc107; color: #856404;"><strong>🔍 Motivo da demora:</strong><br>' || '' }}${{ steps.cypress.outputs.time_exceeded == 'true' && steps.analyze-delay.outputs.delay_reason || '' }}${{ steps.cypress.outputs.time_exceeded == 'true' && steps.analyze-delay.outputs.delay_reason != '' && '</div>' || '' }}${{ steps.cypress.outputs.time_exceeded == 'true' && '</div>' || '' }}
+              ${{ steps.cypress.outputs.time_exceeded == 'true' && '<div style="background-color: #fff3cd; border: 2px solid #ffc107; padding: 15px; border-radius: 5px; margin: 20px 0;"><p style="margin: 0; font-size: 16px; color: #856404;"><strong>⚠️ ATENÇÃO: TESTE ULTRAPASSOU O LIMITE DE TEMPO</strong></p><p style="margin: 10px 0 0 0; color: #856404;">O teste demorou <strong>' || '' }}
+              ${{ steps.cypress.outputs.time_exceeded == 'true' && steps.cypress.outputs.duration_minutes || '' }}
+              ${{ steps.cypress.outputs.time_exceeded == 'true' && ':' || '' }}
+              ${{ steps.cypress.outputs.time_exceeded == 'true' && steps.cypress.outputs.duration_seconds_formatted || '' }}
+              ${{ steps.cypress.outputs.time_exceeded == 'true' && ' minutos</strong> para finalizar o cadastro+login+compra, ultrapassando o limite de <strong>3:30 minutos</strong>.</p>' || '' }}
+              ${{ steps.cypress.outputs.time_exceeded == 'true' && steps.analyze-delay.outputs.delay_reason != '' && '<div style="margin-top: 15px; padding: 10px; background-color: #fff; border-left: 4px solid #ffc107; color: #856404;"><strong>🔍 Motivo da demora:</strong><br>' || '' }}
+              ${{ steps.cypress.outputs.time_exceeded == 'true' && steps.analyze-delay.outputs.delay_reason || '' }}
+              ${{ steps.cypress.outputs.time_exceeded == 'true' && steps.analyze-delay.outputs.delay_reason != '' && '</div>' || '' }}
+              ${{ steps.cypress.outputs.time_exceeded == 'true' && '</div>' || '' }}
               
               <h3 style="color: #2c3e50;">📋 Informações da Execução</h3>
               <ul>
