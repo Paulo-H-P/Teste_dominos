@@ -424,6 +424,95 @@ jobs:
           echo "   duration_seconds_formatted: '${{ steps.cypress.outputs.duration_seconds_formatted }}'"
           echo "   time_exceeded: '${{ steps.cypress.outputs.time_exceeded }}'"
 
+      - name: Analyze delay reason
+        if: always()
+        shell: bash
+        id: analyze-delay
+        run: |
+          EXIT_CODE="${{ steps.cypress.outputs.exit_code }}"
+          TIME_EXCEEDED="${{ steps.cypress.outputs.time_exceeded }}"
+          
+          delay_reason=""
+          
+          if [ "$TIME_EXCEEDED" = "true" ]; then
+            echo "🔍 Analisando motivo da demora..."
+            
+            # Verificar se há resultados do Allure para analisar
+            if [ -d "allure-results" ]; then
+              # Contar testes que falharam
+              failed_tests=$(find allure-results -name "*.json" -type f -exec grep -l '"status":"failed"' {} \; 2>/dev/null | wc -l || echo "0")
+              
+              if [ "$failed_tests" -gt 0 ]; then
+                echo "   📊 Encontrados $failed_tests teste(s) falhado(s)"
+                
+                # Tentar identificar os testes que falharam e seus erros
+                failed_test_names=$(find allure-results -name "*.json" -type f -exec grep -l '"status":"failed"' {} \; 2>/dev/null | head -3 | while read file; do
+                  test_name=$(grep -o '"name":"[^"]*"' "$file" 2>/dev/null | head -1 | sed 's/"name":"\([^"]*\)"/\1/' || echo "")
+                  error_msg=$(grep -o '"message":"[^"]*"' "$file" 2>/dev/null | head -1 | sed 's/"message":"\([^"]*\)"/\1/' | cut -c1-100 || echo "")
+                  if [ -n "$test_name" ]; then
+                    echo "      - $test_name"
+                    if [ -n "$error_msg" ]; then
+                      echo "        Erro: $error_msg"
+                    fi
+                  fi
+                done || echo "")
+                
+                delay_reason="<strong>Testes falharam durante a execução:</strong><br>"
+                delay_reason="${delay_reason}<ul>"
+                
+                # Analisar erros comuns
+                timeout_errors=$(find allure-results -name "*.json" -type f -exec grep -l "Timed out\|timeout\|ECONNREFUSED" {} \; 2>/dev/null | wc -l || echo "0")
+                element_not_found=$(find allure-results -name "*.json" -type f -exec grep -l "Expected to find element\|never found it" {} \; 2>/dev/null | wc -l || echo "0")
+                connection_errors=$(find allure-results -name "*.json" -type f -exec grep -l "ECONNREFUSED\|connection\|network" {} \; 2>/dev/null | wc -l || echo "0")
+                
+                if [ "$timeout_errors" -gt 0 ]; then
+                  delay_reason="${delay_reason}<li><strong>Timeouts detectados:</strong> $timeout_errors teste(s) falharam por timeout (elementos não carregaram a tempo)</li>"
+                fi
+                
+                if [ "$element_not_found" -gt 0 ]; then
+                  delay_reason="${delay_reason}<li><strong>Elementos não encontrados:</strong> $element_not_found teste(s) falharam porque elementos esperados não foram encontrados na página</li>"
+                fi
+                
+                if [ "$connection_errors" -gt 0 ]; then
+                  delay_reason="${delay_reason}<li><strong>Problemas de conexão:</strong> $connection_errors teste(s) falharam por problemas de rede/conexão</li>"
+                fi
+                
+                if [ "$EXIT_CODE" != "0" ]; then
+                  delay_reason="${delay_reason}<li><strong>Execução interrompida:</strong> O teste foi cancelado ou interrompido antes de completar</li>"
+                fi
+                
+                delay_reason="${delay_reason}</ul>"
+                delay_reason="${delay_reason}<p><em>💡 Verifique os screenshots anexados e o relatório Allure para mais detalhes.</em></p>"
+              else
+                delay_reason="<p><strong>Possíveis causas da demora:</strong></p>"
+                delay_reason="${delay_reason}<ul>"
+                delay_reason="${delay_reason}<li>Carregamento lento da aplicação</li>"
+                delay_reason="${delay_reason}<li>Timeouts em elementos da página</li>"
+                delay_reason="${delay_reason}<li>Problemas de rede ou conectividade</li>"
+                delay_reason="${delay_reason}<li>Recursos pesados sendo carregados</li>"
+                delay_reason="${delay_reason}</ul>"
+              fi
+            else
+              delay_reason="<p><strong>Possíveis causas da demora:</strong></p>"
+              delay_reason="${delay_reason}<ul>"
+              delay_reason="${delay_reason}<li>Carregamento lento da aplicação</li>"
+              delay_reason="${delay_reason}<li>Timeouts em elementos da página</li>"
+              delay_reason="${delay_reason}<li>Problemas de rede ou conectividade</li>"
+              delay_reason="${delay_reason}</ul>"
+            fi
+          fi
+          
+          # Salvar no output (escapar quebras de linha para HTML)
+          echo "delay_reason<<EOF" >> "$GITHUB_OUTPUT"
+          echo "$delay_reason" >> "$GITHUB_OUTPUT"
+          echo "EOF" >> "$GITHUB_OUTPUT"
+          
+          if [ -n "$delay_reason" ]; then
+            echo "✅ Motivo da demora analisado e salvo"
+          else
+            echo "ℹ️ Nenhum motivo de demora identificado (teste não ultrapassou o limite)"
+          fi
+
       - name: Format duration for email
         if: always()
         shell: bash
@@ -576,7 +665,7 @@ jobs:
                 </p>
               </div>
               
-              ${{ steps.cypress.outputs.time_exceeded == 'true' && '<div style="background-color: #fff3cd; border: 2px solid #ffc107; padding: 15px; border-radius: 5px; margin: 20px 0;"><p style="margin: 0; font-size: 16px; color: #856404;"><strong>⚠️ ATENÇÃO: TESTE ULTRAPASSOU O LIMITE DE TEMPO</strong></p><p style="margin: 10px 0 0 0; color: #856404;">O teste demorou <strong>' || '' }}${{ steps.cypress.outputs.time_exceeded == 'true' && steps.cypress.outputs.duration_minutes || '' }}${{ steps.cypress.outputs.time_exceeded == 'true' && ':' || '' }}${{ steps.cypress.outputs.time_exceeded == 'true' && steps.cypress.outputs.duration_seconds_formatted || '' }}${{ steps.cypress.outputs.time_exceeded == 'true' && ' minutos</strong> para finalizar o cadastro+login+compra, ultrapassando o limite de <strong>3:30 minutos</strong>.</p></div>' || '' }}
+              ${{ steps.cypress.outputs.time_exceeded == 'true' && '<div style="background-color: #fff3cd; border: 2px solid #ffc107; padding: 15px; border-radius: 5px; margin: 20px 0;"><p style="margin: 0; font-size: 16px; color: #856404;"><strong>⚠️ ATENÇÃO: TESTE ULTRAPASSOU O LIMITE DE TEMPO</strong></p><p style="margin: 10px 0 0 0; color: #856404;">O teste demorou <strong>' || '' }}${{ steps.cypress.outputs.time_exceeded == 'true' && steps.cypress.outputs.duration_minutes || '' }}${{ steps.cypress.outputs.time_exceeded == 'true' && ':' || '' }}${{ steps.cypress.outputs.time_exceeded == 'true' && steps.cypress.outputs.duration_seconds_formatted || '' }}${{ steps.cypress.outputs.time_exceeded == 'true' && ' minutos</strong> para finalizar o cadastro+login+compra, ultrapassando o limite de <strong>3:30 minutos</strong>.</p>' || '' }}${{ steps.cypress.outputs.time_exceeded == 'true' && steps.analyze-delay.outputs.delay_reason != '' && '<div style="margin-top: 15px; padding: 10px; background-color: #fff; border-left: 4px solid #ffc107; color: #856404;"><strong>🔍 Motivo da demora:</strong><br>' || '' }}${{ steps.cypress.outputs.time_exceeded == 'true' && steps.analyze-delay.outputs.delay_reason || '' }}${{ steps.cypress.outputs.time_exceeded == 'true' && steps.analyze-delay.outputs.delay_reason != '' && '</div>' || '' }}${{ steps.cypress.outputs.time_exceeded == 'true' && '</div>' || '' }}
               
               <h3 style="color: #2c3e50;">📋 Informações da Execução</h3>
               <ul>
