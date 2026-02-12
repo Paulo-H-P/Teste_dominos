@@ -24,7 +24,7 @@ jobs:
       QASE_MODE: testops
       QASE_API_TOKEN: ${{ secrets.QASE_TOKEN || secrets.QASE_API_TOKEN }}
       QASE_PROJECT_CODE: DOMINOS
-      CYPRESS_BASE_URL: https://app.dominos.com.br
+      CYPRESS_BASE_URL: https://site-n1.prd-d.ws01.mobi
 
     steps:
       - name: Checkout code
@@ -199,7 +199,7 @@ jobs:
           # Ou: [INFO] qase: Test run link: https://app.qase.io/run/DOMINOS/dashboard/XXX
           
           QASE_RUN_ID=""
-          QASE_LINK="https://app.qase.io/project/DOMINOS/runs"
+          QASE_LINK="https://app.qase.io/run/DOMINOS"
           
           # Tentar encontrar o run ID em arquivos de log ou saída do Cypress
           # Procurar por padrões comuns nos logs
@@ -215,7 +215,7 @@ jobs:
           
           # Se ainda não encontrou, usar link genérico (sempre funciona)
           if [ -n "$QASE_RUN_ID" ] && [ "$QASE_RUN_ID" != "" ]; then
-            QASE_LINK="https://app.qase.io/project/DOMINOS/runs/$QASE_RUN_ID"
+            QASE_LINK="https://app.qase.io/run/DOMINOS/dashboard/$QASE_RUN_ID"
             echo "✅ Run ID encontrado: $QASE_RUN_ID"
             echo "🔗 Link do Qase: $QASE_LINK"
           else
@@ -741,7 +741,7 @@ jobs:
                 </li>
                 <li>
                   <strong>Qase Test Run:</strong> 
-                  <a href="${{ steps.qase-link.outputs.qase_link || 'https://app.qase.io/project/DOMINOS/runs' }}" style="color: #007bff; text-decoration: none;">
+                  <a href="${{ steps.qase-link.outputs.qase_link || 'https://app.qase.io/run/DOMINOS' }}" style="color: #007bff; text-decoration: none;">
                     Ver no Qase${{ steps.qase-link.outputs.qase_run_id != '' && ' (Run #' || '' }}${{ steps.qase-link.outputs.qase_run_id || '' }}${{ steps.qase-link.outputs.qase_run_id != '' && ')' || '' }}
                   </a>
                 </li>

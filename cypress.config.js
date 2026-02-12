@@ -126,7 +126,7 @@ module.exports = defineConfig({
     },
     
 
-    baseUrl: process.env.CYPRESS_BASE_URL || 'https://app.dominos.com.br',
+    baseUrl: process.env.CYPRESS_BASE_URL || 'https://site-n1.prd-d.ws01.mobi',
 
     specPattern: 'cypress/e2e/**/*.cy.{js,jsx,ts,tsx}',
     supportFile: 'cypress/support/e2e.js',
