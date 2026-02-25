@@ -12,6 +12,66 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  api-tests:
+    name: API Tests (Newman)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      QASE_API_TOKEN: ${{ secrets.QASE_TOKEN || secrets.QASE_API_TOKEN }}
+      QASE_PROJECT_CODE: DOMINOS
+      QASE_RUN_TITLE_API: "API Tests (Newman) - CI"
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: "npm"
+
+      - name: Install dependencies
+        run: npm ci || npm install
+
+      - name: Run API tests (Newman) and send to Qase
+        id: newman
+        continue-on-error: true
+        run: |
+          echo "🚀 Executando testes de API (Newman)..."
+          npm run test:api:ci || true
+          echo "newman_exit=$?" >> "$GITHUB_OUTPUT"
+          if [ -f newman-run-report.json ]; then
+            echo "report_exists=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "report_exists=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: API tests summary
+        if: always()
+        run: |
+          echo "## 📡 Relatório Testes de API (Newman)" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          if [ "${{ steps.newman.outputs.report_exists }}" = "true" ]; then
+            echo "✅ Coleção executada. Resultados enviados ao **Qase** (run de API)." >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "📦 **Relatório HTML:** disponível no artifact \`newman-report\` abaixo." >> $GITHUB_STEP_SUMMARY
+          else
+            echo "⚠️ Nenhum report Newman gerado." >> $GITHUB_STEP_SUMMARY
+          fi
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "🔗 **Qase (API):** [Ver runs do projeto DOMINOS](https://app.qase.io/run/DOMINOS)" >> $GITHUB_STEP_SUMMARY
+
+      - name: Upload Newman HTML report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: newman-report
+          path: |
+            newman-report/
+            newman-run-report.json
+          retention-days: 30
+          if-no-files-found: warn
+
   e2e-allure:
     runs-on: ubuntu-latest
     timeout-minutes: 45
@@ -383,6 +443,8 @@ jobs:
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "📦 **Download do Artifact:** Disponível na seção de Artifacts desta execução" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
+          echo "📡 **Testes de API (Newman):** Executados no job \`API Tests (Newman)\`; relatório em Artifacts (\`newman-report\`); resultados no Qase (projeto DOMINOS)." >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
           echo "### 📋 Informações" >> $GITHUB_STEP_SUMMARY
           echo "- **Commit:** \`${{ github.sha }}\`" >> $GITHUB_STEP_SUMMARY
           echo "- **Branch:** \`${{ github.ref_name }}\`" >> $GITHUB_STEP_SUMMARY
@@ -728,10 +790,14 @@ jobs:
               <h3 style="color: #2c3e50;">🔗 Links Úteis</h3>
               <ul>
                 <li>
-                  <strong>Relatório Allure:</strong> 
+                  <strong>Relatório Allure (E2E):</strong> 
                   <a href="${{ steps.pages-url.outputs.url }}" style="color: #007bff; text-decoration: none;">
                     ${{ steps.pages-url.outputs.url }}
                   </a>
+                </li>
+                <li>
+                  <strong>Testes de API (Newman):</strong> 
+                  Relatório HTML no artifact <code>newman-report</code> desta execução; resultados enviados ao Qase (projeto DOMINOS).
                 </li>
                 <li>
                   <strong>Logs do Workflow:</strong> 
@@ -740,7 +806,7 @@ jobs:
                   </a>
                 </li>
                 <li>
-                  <strong>Qase Test Run:</strong> 
+                  <strong>Qase Test Run (E2E):</strong> 
                   <a href="${{ steps.qase-link.outputs.qase_link || 'https://app.qase.io/run/DOMINOS' }}" style="color: #007bff; text-decoration: none;">
                     Ver no Qase${{ steps.qase-link.outputs.qase_run_id != '' && ' (Run #' || '' }}${{ steps.qase-link.outputs.qase_run_id || '' }}${{ steps.qase-link.outputs.qase_run_id != '' && ')' || '' }}
                   </a>

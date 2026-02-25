@@ -5,6 +5,10 @@ node_modules/
 allure-results/
 allure-report/
 
+# Newman (testes de API)
+newman-run-report.json
+newman-report/
+
 # Cypress
 cypress/videos/
 cypress/screenshots/

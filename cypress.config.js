@@ -5,6 +5,10 @@ require('dotenv').config()
 const { afterSpecHook } = require('cypress-qase-reporter/hooks')
 
 module.exports = defineConfig({
+  env: {
+    apiUrl: process.env.CYPRESS_API_URL || 'https://api.exemplo.com/v1'
+  },
+
   // Configuração do reporter - usando cypress-multi-reporters
   reporter: 'cypress-multi-reporters',
   reporterOptions: {
