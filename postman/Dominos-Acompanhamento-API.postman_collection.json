@@ -12,6 +12,7 @@
     {
       "name": "GET Recurso",
       "request": {
+        "description": "O que faz: GET /recurso?lingua=pt. Retorno: 200 ou 500; se JSON, valida propriedade status.",
         "method": "GET",
         "header": [
           { "key": "Accept-Language", "value": "pt" }
@@ -55,6 +56,7 @@
     {
       "name": "POST Login",
       "request": {
+        "description": "O que faz: POST /login com email e senha. Retorno: 200 (com data.jwt), 400, 401 ou 404. Se 200 e JWT, salva na variavel jwt.",
         "method": "POST",
         "header": [
           { "key": "Content-Type", "value": "application/json" }
@@ -90,6 +92,7 @@
     {
       "name": "GET Autenticado (Bearer JWT)",
       "request": {
+        "description": "O que faz: GET recurso protegido com Authorization Bearer jwt. Retorno: 200 (autorizado) ou 401 (nao autorizado).",
         "method": "GET",
         "header": [
           { "key": "Authorization", "value": "Bearer {{jwt}}" },

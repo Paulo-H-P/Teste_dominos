@@ -15,11 +15,13 @@ jobs:
   api-tests:
     name: API Tests (Newman)
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 5
     env:
       QASE_API_TOKEN: ${{ secrets.QASE_TOKEN || secrets.QASE_API_TOKEN }}
       QASE_PROJECT_CODE: DOMINOS
       QASE_RUN_TITLE_API: "API Tests (Newman) - CI"
+      # Opcional: defina API_BASE_URL em Settings > Variables para testar API real (ex: https://sua-api.com/v1)
+      NEWMAN_BASE_URL: ${{ vars.API_BASE_URL || 'https://api.exemplo.com/v1' }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -38,7 +40,9 @@ jobs:
         continue-on-error: true
         run: |
           echo "🚀 Executando testes de API (Newman)..."
-          npm run test:api:ci || true
+          echo "   baseUrl (NEWMAN_BASE_URL): $NEWMAN_BASE_URL"
+          echo "   timeout por request: 10s (evita travar se a API nao responder)"
+          npx newman run postman/Teste-Geral-API.postman_collection.json --timeout-request 10000 --global-var "baseUrl=$NEWMAN_BASE_URL" --reporters cli,json,htmlextra --reporter-json-export newman-run-report.json --reporter-htmlextra-export newman-report/newman-report.html --reporter-htmlextra-darkTheme && node scripts/newman-to-qase.js || true
           echo "newman_exit=$?" >> "$GITHUB_OUTPUT"
           if [ -f newman-run-report.json ]; then
             echo "report_exists=true" >> "$GITHUB_OUTPUT"

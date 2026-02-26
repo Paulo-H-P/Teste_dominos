@@ -13,6 +13,7 @@
     {
       "name": "1. Health / Root",
       "request": {
+        "description": "O que faz: GET na raiz da API (health check). Retorno: 2xx (OK) ou 404; se JSON, valida que e objeto.",
         "method": "GET",
         "header": [{ "key": "Accept", "value": "application/json" }],
         "url": "{{baseUrl}}/"
@@ -42,6 +43,7 @@
     {
       "name": "2. GET Lista (query params)",
       "request": {
+        "description": "O que faz: GET /recurso?page=1&limit=10 (listagem com paginacao). Retorno: 200, 404 ou 500; se JSON, objeto ou array.",
         "method": "GET",
         "header": [
           { "key": "Accept", "value": "application/json" },
@@ -83,6 +85,7 @@
     {
       "name": "3. POST Login",
       "request": {
+        "description": "O que faz: POST /login com email e senha. Retorno: 200 (com data.jwt), 400, 401 ou 404. Se 200 e JWT, salva na variavel jwt.",
         "method": "POST",
         "header": [{ "key": "Content-Type", "value": "application/json" }],
         "body": {
@@ -114,6 +117,7 @@
     {
       "name": "4. GET Por ID",
       "request": {
+        "description": "O que faz: GET /recurso/1 (busca por ID). Retorno: 200 (objeto), 404 (nao encontrado) ou 500.",
         "method": "GET",
         "header": [{ "key": "Accept", "value": "application/json" }],
         "url": "{{baseUrl}}/recurso/1"
@@ -142,6 +146,7 @@
     {
       "name": "5. GET Autenticado (Bearer)",
       "request": {
+        "description": "O que faz: GET recurso protegido com Authorization Bearer jwt. Retorno: 200 (autorizado) ou 401 (nao autorizado).",
         "method": "GET",
         "header": [
           { "key": "Authorization", "value": "Bearer {{jwt}}" },
@@ -166,6 +171,7 @@
     {
       "name": "6. POST Criar (body JSON)",
       "request": {
+        "description": "O que faz: POST /recurso com body (nome, ativo) para criar recurso. Retorno: 200/201 (com data.id), 400, 401, 403, 422. Se sucesso e data.id, salva idCriado.",
         "method": "POST",
         "header": [
           { "key": "Content-Type", "value": "application/json" },
@@ -200,6 +206,7 @@
     {
       "name": "7. PUT Atualizar",
       "request": {
+        "description": "O que faz: PUT /recurso/{{idCriado}} para atualizar recurso. Retorno: 200, 400, 401, 403, 404 ou 422.",
         "method": "PUT",
         "header": [
           { "key": "Content-Type", "value": "application/json" },
@@ -233,6 +240,7 @@
     {
       "name": "8. DELETE",
       "request": {
+        "description": "O que faz: DELETE /recurso/{{idCriado}} para remover recurso. Retorno: 200, 204 (sem corpo), 401, 403 ou 404.",
         "method": "DELETE",
         "header": [{ "key": "Authorization", "value": "Bearer {{jwt}}" }],
         "url": "{{baseUrl}}/recurso/{{idCriado}}"

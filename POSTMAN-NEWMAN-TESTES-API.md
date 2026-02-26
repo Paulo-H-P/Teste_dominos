@@ -20,6 +20,36 @@ Instruções e configurações para reutilizar em outros projetos: coleção Pos
 
 **Ajuste a variável `baseUrl`** na coleção (ou crie um environment no Postman) para a URL real da sua API antes de rodar os testes.
 
+### Relatório: o que cada teste faz e qual o retorno
+
+#### Coleção Domino's Acompanhamento API (3 testes)
+
+| Teste | O que faz | Retorno esperado |
+|-------|-----------|------------------|
+| **GET Recurso** | Requisição GET ao endpoint `/recurso` com query `lingua=pt`. Verifica se a API responde e, se o corpo for JSON, valida a propriedade `status`. | **200** (OK) ou **500** (erro de servidor). Se 200 e corpo JSON: objeto com propriedade `status`. Se a API devolver HTML (ex.: página de erro), o teste aceita e não falha. |
+| **POST Login** | Envia email e senha no body (JSON) para `POST /login`. Se a API retornar 200 com um JWT em `data.jwt`, o token é salvo na variável da coleção `jwt` para os próximos requests. | **200** (sucesso; opcionalmente `data.jwt`), **400** (dados inválidos), **401** (credenciais inválidas) ou **404** (rota não existe). Em 200 com JWT, o script grava `jwt` para uso em headers Bearer. |
+| **GET Autenticado (Bearer JWT)** | GET a um endpoint protegido enviando o header `Authorization: Bearer {{jwt}}`. Usa o token obtido no POST Login (ou vazio se não houve login). | **200** (autorizado, recurso retornado) ou **401** (não autorizado / token inválido ou ausente). |
+
+#### Coleção Teste Geral API (8 testes)
+
+| Teste | O que faz | Retorno esperado |
+|-------|-----------|------------------|
+| **1. Health / Root** | GET na raiz da API (`/`) para health check. Verifica se a API está no ar. | **2xx** (OK) ou **404**. Se o corpo for JSON, valida que é um objeto. |
+| **2. GET Lista (query params)** | GET em `/recurso?page=1&limit=10` para listagem com paginação. | **200** (lista/objeto), **404** (rota não existe) ou **500**. Se JSON, espera objeto ou array. |
+| **3. POST Login** | POST em `/login` com email e senha. Se houver JWT em `data.jwt`, salva na variável `jwt`. | **200** (com opcional `data.jwt`), **400**, **401** ou **404**. Em 200 com JWT, grava `jwt` para os próximos requests. |
+| **4. GET Por ID** | GET em `/recurso/1` para buscar um recurso por ID. | **200** (objeto do recurso), **404** (não encontrado) ou **500**. |
+| **5. GET Autenticado (Bearer)** | GET em endpoint protegido com header `Authorization: Bearer {{jwt}}`. | **200** (autorizado) ou **401** (não autorizado). |
+| **6. POST Criar (body JSON)** | POST em `/recurso` com body `{ nome, ativo }` para criar recurso. Se a resposta trouxer `data.id`, salva em `idCriado`. | **200** ou **201** (sucesso; opcional `data.id`), **400**, **401**, **403**, **404** ou **422**. Em sucesso com `data.id`, grava `idCriado`. |
+| **7. PUT Atualizar** | PUT em `/recurso/{{idCriado}}` para atualizar o recurso criado no teste 6. | **200**, **400**, **401**, **403**, **404** ou **422**. |
+| **8. DELETE** | DELETE em `/recurso/{{idCriado}}` para remover o recurso. | **200**, **204** (sucesso sem corpo), **401**, **403** ou **404**. |
+
+No Postman, cada request tem uma **descrição** (aba de documentação do request) com resumo do que faz e do retorno; no relatório (Newman/HTML) e no guia acima está o detalhe completo.
+
+### Timeout e URL da API no CI
+
+- No CI, cada request do Newman tem **timeout de 10 segundos** (`--timeout-request 10000`). Se a API não responder (ex.: `api.exemplo.com` é só exemplo), o request falha por timeout e o job segue; o job inteiro tem **timeout de 5 minutos**, então não fica pendurado.
+- Para testar uma **API real** no GitHub Actions: em **Settings > Secrets and variables > Actions**, crie uma variável **`API_BASE_URL`** (ex.: `https://sua-api.com/v1`). O workflow usa essa variável como `baseUrl` da coleção. Se não existir, usa `https://api.exemplo.com/v1`.
+
 ### Relatórios no workflow e no Qase
 
 - **GitHub Actions:** O job **API Tests (Newman)** roda na mesma workflow dos testes E2E (`teste-dominos.yml`). Gera relatório HTML (Newman HTMLExtra) e envia resultados ao Qase.

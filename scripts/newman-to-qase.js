@@ -13,7 +13,12 @@ const path = require('path');
 const https = require('https');
 
 const REPORT_PATH = process.argv[2] || path.join(__dirname, '..', 'newman-run-report.json');
-const HTML_REPORT_PATH = path.join(__dirname, '..', 'newman-report', 'newman-report.html');
+const ROOT_DIR = path.join(__dirname, '..');
+const HTML_REPORT_PATHS = [
+  path.join(ROOT_DIR, 'newman-report', 'newman-report.html'),
+  path.join(ROOT_DIR, 'newman-report', 'index.html'),
+  path.join(ROOT_DIR, 'newman-report.html')
+];
 const QASE_TOKEN = process.env.QASE_API_TOKEN || process.env.QASE_TOKEN || '';
 const QASE_PROJECT = process.env.QASE_PROJECT_CODE || 'DOMINOS';
 const QASE_RUN_TITLE = process.env.QASE_RUN_TITLE_API || process.env.QASE_RUN_TITLE || 'API Tests (Newman)';
@@ -52,23 +57,20 @@ function request(options, body, contentType) {
 
 /** Faz upload de um arquivo (ex.: relatório HTML) e retorna o hash para anexar ao resultado. */
 function uploadAttachment(filePath) {
-  return new Promise((resolve, reject) => {
+  return new Promise((resolve) => {
     if (!fs.existsSync(filePath)) {
       resolve(null);
       return;
     }
-    const filename = path.basename(filePath);
-    const fileBuffer = fs.readFileSync(filePath);
-    const boundary = '----QaseNewman' + Date.now();
-    const body = Buffer.concat([
-      Buffer.from(`--${boundary}\r\nContent-Disposition: form-data; name="file[]"; filename="${filename}"\r\nContent-Type: text/html\r\n\r\n`),
-      fileBuffer,
-      Buffer.from(`\r\n--${boundary}--\r\n`)
-    ]);
+    const FormData = require('form-data');
+    const form = new FormData();
+    form.append('file[]', fs.createReadStream(filePath), {
+      filename: path.basename(filePath),
+      contentType: 'text/html'
+    });
     const headers = {
       'Token': QASE_TOKEN,
-      'Content-Type': `multipart/form-data; boundary=${boundary}`,
-      'Content-Length': body.length
+      ...form.getHeaders()
     };
     const req = https.request({
       hostname: 'api.qase.io',
@@ -84,17 +86,28 @@ function uploadAttachment(filePath) {
           if (res.statusCode >= 200 && res.statusCode < 300 && parsed.result && parsed.result[0]) {
             resolve(parsed.result[0].hash);
           } else {
+            console.warn('⚠️ Qase upload respondeu:', res.statusCode, data ? data.slice(0, 200) : '');
             resolve(null);
           }
         } catch (e) {
+          console.warn('⚠️ Qase upload parse erro:', e.message);
           resolve(null);
         }
       });
     });
-    req.on('error', () => resolve(null));
-    req.write(body);
-    req.end();
+    req.on('error', (err) => {
+      console.warn('⚠️ Qase upload request erro:', err.message);
+      resolve(null);
+    });
+    form.pipe(req);
   });
+}
+
+function findHtmlReport() {
+  for (const p of HTML_REPORT_PATHS) {
+    if (fs.existsSync(p)) return p;
+  }
+  return null;
 }
 
 function createRun() {
@@ -155,13 +168,14 @@ function main() {
       console.log('✅ Run Qase criado:', runId, `https://app.qase.io/run/${QASE_PROJECT}/dashboard/${runId}`);
 
       let reportHash = null;
-      if (fs.existsSync(HTML_REPORT_PATH)) {
-        console.log('📎 Enviando relatório HTML para o Qase...');
-        reportHash = await uploadAttachment(HTML_REPORT_PATH);
+      const htmlPath = findHtmlReport();
+      if (htmlPath) {
+        console.log('📎 Enviando relatório HTML para o Qase:', path.basename(htmlPath));
+        reportHash = await uploadAttachment(htmlPath);
         if (reportHash) console.log('✅ Relatório HTML anexado (hash:', reportHash.slice(0, 12) + '...).');
-        else console.warn('⚠️ Não foi possível anexar o relatório HTML.');
+        else console.warn('⚠️ Não foi possível anexar o relatório HTML (veja avisos acima).');
       } else {
-        console.warn('⚠️ Relatório HTML não encontrado em:', HTML_REPORT_PATH);
+        console.warn('⚠️ Relatório HTML não encontrado. Procurou em:', HTML_REPORT_PATHS.map(p => path.relative(ROOT_DIR, p)).join(', '));
       }
 
       let sent = 0;

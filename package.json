@@ -6,7 +6,7 @@
   "scripts": {
     "test:api:postman": "newman run postman/Dominos-Acompanhamento-API.postman_collection.json",
     "test:api:geral": "newman run postman/Teste-Geral-API.postman_collection.json",
-    "test:api:ci": "newman run postman/Teste-Geral-API.postman_collection.json --reporters cli,json,htmlextra --reporter-json-export newman-run-report.json --reporter-htmlextra-export newman-report/newman-report.html --reporter-htmlextra-darkTheme && node scripts/newman-to-qase.js",
+    "test:api:ci": "newman run postman/Teste-Geral-API.postman_collection.json --timeout-request 10000 --reporters cli,json,htmlextra --reporter-json-export newman-run-report.json --reporter-htmlextra-export newman-report/newman-report.html --reporter-htmlextra-darkTheme && node scripts/newman-to-qase.js",
     "cypress:open": "cypress open",
     "cypress:run": "cypress run --browser chrome --headless",
     "cypress:run:qase": "cross-env QASE_MODE=testops cypress run --browser chrome --headless",
