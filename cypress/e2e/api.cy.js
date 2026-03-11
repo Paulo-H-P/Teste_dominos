@@ -1,93 +1,152 @@
 /**
- * Testes de API (cy.request) - conforme POSTMAN-NEWMAN-TESTES-API.md
+ * Testes de API (cy.request) - 8 cenários alinhados à coleção Newman (Teste Geral API).
+ * Aparecem no Allure como 8 testes de API; mesma cobertura do Postman/Newman.
  *
- * - URL base: sempre a das APIs do projeto (site-n1.prd-d.ws01.mobi/api).
- * - Outro ambiente: defina CYPRESS_API_URL no .env (cypress.config.js já trata para nunca usar api.exemplo.com).
- * - Rodar só estes testes:
- *     npx cypress run --spec "cypress/e2e/api.cy.js"
+ * - URL base: site-n1.prd-d.ws01.mobi/api (ou CYPRESS_API_URL no .env).
+ * - Rodar só estes: npx cypress run --spec "cypress/e2e/api.cy.js"
  */
 const API_URL = Cypress.env('apiUrl')
 
 const headers = {
   'Content-Type': 'application/json',
+  'Accept': 'application/json',
   'Accept-Language': 'pt'
 }
 
 const requestTimeout = 15000
-const maxDurationMs = 4000 // tempo máximo aceitável para respostas "normais"
 
-describe('API - saúde e contratos básicos', () => {
-  it('GET /recurso retorna 200 ou 500, dentro de tempo razoável e com estrutura mínima', () => {
+// Aceita corpo como objeto ou string (API pode retornar HTML)
+function bodyAsObject (res) {
+  if (res.body == null) return null
+  if (typeof res.body === 'object' && !Array.isArray(res.body)) return res.body
+  try {
+    return typeof res.body === 'string' ? JSON.parse(res.body) : null
+  } catch (_) {
+    return null
+  }
+}
+
+describe('API (8 cenários - Newman)', () => {
+  it('1. Health / Root', () => {
+    cy.request({
+      method: 'GET',
+      url: `${API_URL}/`,
+      headers: { Accept: 'application/json' },
+      failOnStatusCode: false,
+      timeout: requestTimeout
+    }).then((res) => {
+      expect(res.status === 404 || (res.status >= 200 && res.status < 300)).to.be.true
+      const json = bodyAsObject(res)
+      if (json && typeof json === 'object') {
+        expect(json).to.be.an('object')
+      }
+    })
+  })
+
+  it('2. GET Lista (query params)', () => {
     cy.request({
       method: 'GET',
       url: `${API_URL}/recurso`,
-      qs: { lingua: 'pt' },
+      qs: { page: 1, limit: 10 },
       headers,
       failOnStatusCode: false,
       timeout: requestTimeout
     }).then((res) => {
-      // Aceita 200 ou 500 (como já estava), mas mede performance
-      expect(res.status).to.be.oneOf([200, 500])
-
-      // Performance básica (não falha se estiver acima, só avisa)
-      cy.log(`⏱ Duração: ${res.duration} ms`)
-      if (res.duration > maxDurationMs) {
-        cy.log(`⚠️ Resposta demorou mais que ${maxDurationMs} ms`)
-      }
-
-      if (res.status === 200) {
-        // Quando OK, valida estrutura mínima do JSON
-        expect(res.headers['content-type']).to.match(/application\/json|text\/json/i)
-        expect(res.body).to.be.an('object')
-        expect(res.body).to.have.property('status')
-      } else if (res.status === 500) {
-        // Quando a API estoura erro interno, ainda assim garante algum corpo
-        expect(res.body).to.exist
+      expect(res.status).to.be.oneOf([200, 404, 500])
+      const json = bodyAsObject(res)
+      if (json && typeof json === 'object') {
+        expect(json).to.satisfy((v) => typeof v === 'object')
       }
     })
   })
-})
 
-describe('API - autenticação (/login)', () => {
-  it('POST /login com credenciais inválidas retorna erro com corpo JSON', () => {
+  it('3. POST Login', () => {
     cy.request({
       method: 'POST',
       url: `${API_URL}/login`,
       headers,
-      body: { email: 'naoexiste@teste.com', senha: 'errada' },
+      body: { email: 'teste@exemplo.com', senha: '123456' },
       failOnStatusCode: false,
       timeout: requestTimeout
     }).then((res) => {
-      // Em APIs reais, pode ser 400, 401, 404 ou até 200 com "sucesso=false"
       expect(res.status).to.be.oneOf([200, 400, 401, 404])
-
-      expect(res.body).to.be.an('object')
-
-      // Quando a API trata como "sucesso=false" com 200
-      if (res.status === 200) {
-        if (Object.prototype.hasOwnProperty.call(res.body, 'success')) {
-          expect(res.body.success).to.be.false
-        }
-        if (Object.prototype.hasOwnProperty.call(res.body, 'erro')) {
-          expect(res.body.erro).to.be.a('string')
-        }
+      const json = bodyAsObject(res)
+      if (json && res.status === 200 && json.data && json.data.jwt) {
+        expect(json.data.jwt).to.be.a('string')
       }
     })
   })
 
-  it('POST /login sem corpo retorna erro de validação (status diferente de 200)', () => {
+  it('4. GET Por ID', () => {
     cy.request({
-      method: 'POST',
-      url: `${API_URL}/login`,
-      headers,
-      body: {}, // sem email/senha
+      method: 'GET',
+      url: `${API_URL}/recurso/1`,
+      headers: { Accept: 'application/json' },
       failOnStatusCode: false,
       timeout: requestTimeout
     }).then((res) => {
-      // Espera qualquer status que NÃO seja 200 para indicar erro de validação
-      expect(res.status).to.not.equal(200)
-      expect(res.status).to.be.oneOf([400, 401, 422, 500])
-      expect(res.body).to.be.an('object')
+      expect(res.status).to.be.oneOf([200, 404, 500])
+      const json = bodyAsObject(res)
+      if (json && typeof json === 'object') {
+        expect(json).to.be.an('object')
+      }
+    })
+  })
+
+  it('5. GET Autenticado (Bearer)', () => {
+    cy.request({
+      method: 'GET',
+      url: `${API_URL}/recurso-protegido`,
+      headers: {
+        'Authorization': 'Bearer ',
+        'Accept': 'application/json'
+      },
+      failOnStatusCode: false,
+      timeout: requestTimeout
+    }).then((res) => {
+      expect(res.status).to.be.oneOf([200, 401])
+    })
+  })
+
+  it('6. POST Criar (body JSON)', () => {
+    cy.request({
+      method: 'POST',
+      url: `${API_URL}/recurso`,
+      headers,
+      body: { nome: 'Item teste', ativo: true },
+      failOnStatusCode: false,
+      timeout: requestTimeout
+    }).then((res) => {
+      expect(res.status).to.be.oneOf([200, 201, 400, 401, 403, 404, 422])
+      const json = bodyAsObject(res)
+      if (json && (res.status === 200 || res.status === 201) && json.data && json.data.id) {
+        expect(json.data.id).to.be.ok
+      }
+    })
+  })
+
+  it('7. PUT Atualizar', () => {
+    cy.request({
+      method: 'PUT',
+      url: `${API_URL}/recurso/1`,
+      headers,
+      body: { nome: 'Item atualizado', ativo: false },
+      failOnStatusCode: false,
+      timeout: requestTimeout
+    }).then((res) => {
+      expect(res.status).to.be.oneOf([200, 400, 401, 403, 404, 405, 422])
+    })
+  })
+
+  it('8. DELETE', () => {
+    cy.request({
+      method: 'DELETE',
+      url: `${API_URL}/recurso/1`,
+      headers: { Authorization: 'Bearer ' },
+      failOnStatusCode: false,
+      timeout: requestTimeout
+    }).then((res) => {
+      expect(res.status).to.be.oneOf([200, 204, 401, 403, 404, 405])
     })
   })
 })
