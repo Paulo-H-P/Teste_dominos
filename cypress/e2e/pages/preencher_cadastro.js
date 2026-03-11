@@ -91,14 +91,14 @@ class PreencherCadastroPage {
      */
     preencherFormulario({
       nome = 'Paulo Pinheiro',
-      email = null,
-      phone = null,
+      email = 'fredteste@testedominos.com',
+      phone = '11911111111',
       senha = '1234567A',
       cep = '06454010',
       numero = '258',
     } = {}) {
-      const emailFinal = email || this.gerarEmailUnico()
-      const phoneFinal = phone || this.gerarTelefoneUnico()
+      const emailFinal = email || 'fredteste@testedominos.com'
+      const phoneFinal = phone || '11911111111'
   
       cy.log(`🧾 Cadastro gerado: ${emailFinal} | ${phoneFinal}`)
 
