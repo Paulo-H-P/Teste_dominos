@@ -6,7 +6,13 @@ const { afterSpecHook } = require('cypress-qase-reporter/hooks')
 
 module.exports = defineConfig({
   env: {
-    apiUrl: process.env.CYPRESS_API_URL || 'https://api.exemplo.com/v1'
+    // URL das APIs do projeto (nunca usa api.exemplo.com). Para outro ambiente: defina CYPRESS_API_URL no .env
+    apiUrl: (() => {
+      const projectApiUrl = 'https://site-n1.prd-d.ws01.mobi/api'
+      const envUrl = process.env.CYPRESS_API_URL
+      if (!envUrl || envUrl.includes('api.exemplo.com')) return projectApiUrl
+      return envUrl
+    })()
   },
 
   // Configuração do reporter - usando cypress-multi-reporters

@@ -1,371 +1,225 @@
-# Guia: Postman, Newman e Testes de API
+# Guia: Postman, Newman e Testes de API (com Qase e relatório HTML)
 
-Instruções e configurações para reutilizar em outros projetos: coleção Postman com testes, execução via Newman (CLI) e testes de API no Cypress.
+Passo a passo do que foi implementado neste projeto para testes de API (Postman/Newman), envio de resultados ao Qase e anexo do relatório HTML no Qase. Use este guia para replicar em outros projetos.
 
 ---
 
-## Neste projeto (Domino's Acompanhamento)
+## Passo a passo do que foi feito aqui
+
+### 1. Estrutura de pastas
+
+```
+projeto/
+├── postman/
+│   ├── Dominos-Acompanhamento-API.postman_collection.json   # Coleção específica (3 requests)
+│   └── Teste-Geral-API.postman_collection.json              # Coleção genérica CRUD (8 requests)
+├── scripts/
+│   └── newman-to-qase.js     # Envia resultados ao Qase + upload do relatório HTML
+├── cypress/
+│   └── e2e/
+│       └── api.cy.js         # Testes de API com cy.request (opcional)
+├── .env                      # QASE_API_TOKEN, QASE_PROJECT_CODE, CYPRESS_API_URL
+├── .env.example              # Modelo sem valores sensíveis
+├── .gitignore                # newman-run-report.json, newman-report/
+├── package.json
+└── .github/workflows/
+    └── teste-dominos.yml     # Job "API Tests (Newman)" + E2E
+```
+
+### 2. Coleções Postman
+
+- **Variáveis da coleção:** `baseUrl` (URL base da API), `jwt` (token; preenchido pelo teste de Login). Na Teste Geral: também `idCriado`.
+- **baseUrl padrão:** definida como a API do projeto (ex.: `https://site-n1.prd-d.ws01.mobi/api`). Em outro projeto, use a URL base real da sua API.
+- **Tratamento de resposta:** quando a API pode devolver HTML (ex.: página de erro) em vez de JSON, os scripts de teste usam `JSON.parse(pm.response.text())` em `try/catch` e não chamam `pm.response.json()` direto, para evitar falha com "Unexpected token '<'".
+- **Descrição em cada request:** cada request tem `"description"` com "O que faz" e "Retorno esperado", para documentação no Postman e no relatório.
+- **Status aceitos:** incluir 404, 500, 405 (Method Not Allowed) etc. conforme a API (ex.: `pm.expect(pm.response.code).to.be.oneOf([200, 404, 405])`).
+
+### 3. package.json
+
+**Dependências de desenvolvimento:**
+
+```json
+"devDependencies": {
+  "newman": "^6.2.0",
+  "newman-reporter-htmlextra": "^1.23.0",
+  "dotenv": "^17.2.3"
+}
+```
+
+**Scripts:**
+
+```json
+"scripts": {
+  "test:api:postman": "newman run postman/Dominos-Acompanhamento-API.postman_collection.json",
+  "test:api:geral": "newman run postman/Teste-Geral-API.postman_collection.json",
+  "test:api:ci": "newman run postman/Teste-Geral-API.postman_collection.json --timeout-request 10000 --reporters cli,json,htmlextra --reporter-json-export newman-run-report.json --reporter-htmlextra-export newman-report/newman-report.html --reporter-htmlextra-darkTheme && node scripts/newman-to-qase.js"
+}
+```
+
+- **test:api:ci:** timeout de 10 s por request (`--timeout-request 10000`), gera JSON (para o script Qase) e HTML (para download e anexo no Qase), depois roda `newman-to-qase.js`.
+
+### 4. Script newman-to-qase.js
+
+**Função:** após o Newman rodar, lê `newman-run-report.json`, cria um run no Qase, envia cada request da coleção como resultado (passed/failed) e **anexa o relatório HTML** ao primeiro resultado.
+
+**Configuração:**
+
+- **Token:** `QASE_API_TOKEN` ou `QASE_TOKEN` (carrega do `.env` via `dotenv`).
+- **Projeto:** `QASE_PROJECT_CODE` (ex.: DOMINOS).
+- **Relatório JSON:** primeiro argumento do script ou `newman-run-report.json` na raiz.
+- **Relatório HTML:** procurado em `newman-report/newman-report.html`, `newman-report/index.html` ou `newman-report.html` na raiz.
+
+**Fluxo:**
+
+1. Carrega `.env` (path: `../.env` em relação ao script).
+2. Lê o JSON do Newman; se não houver token ou report, sai sem erro.
+3. Cria um run no Qase: `POST https://api.qase.io/v1/run/{project}` (title, description, is_autotest).
+4. **Upload do relatório HTML:** se o arquivo HTML existir, faz `POST https://api.qase.io/v1/attachment/{project}` com **multipart/form-data** (campo `file[]`), usando o pacote `form-data`. A API retorna um `hash`.
+5. Para cada execução no report: monta resultado com `status` (passed/failed), `case.title` (nome do request), `time_ms`, `comment` (se falhou). No **primeiro** resultado, envia também `attachments: [hash]` com o hash do HTML.
+6. Envia cada resultado: `POST https://api.qase.io/v1/result/{project}/{runId}`.
+
+**Dependência:** o projeto já tem `form-data` (transitiva); o script usa `require('form-data')` para montar o multipart corretamente.
+
+### 5. Relatório HTML no Qase (prompt e implementação)
+
+**Prompt usado (exemplo):**  
+*"Consegue anexar um relatório HTML no Qase?"*
+
+**O que foi feito:**
+
+- A API do Qase permite **upload de anexos** por projeto: `POST /v1/attachment/{code}` com **multipart/form-data**, campo **`file[]`** (arquivo binário). A resposta traz um **hash** por arquivo.
+- Ao criar um **resultado** de teste (`POST /v1/result/{code}/{runId}`), o body pode incluir **`attachments: [hash]`** (array de hashes). O anexo fica vinculado àquele resultado.
+- Implementação no `newman-to-qase.js`:
+  1. Após criar o run, verificar se existe o arquivo do relatório HTML (Newman HTMLExtra).
+  2. Fazer upload do arquivo com `form-data` (campo `file[]`, `Content-Type: text/html`) e obter o `hash` da resposta.
+  3. Ao enviar o **primeiro** resultado do run, incluir `attachments: [hash]`. Assim o relatório HTML aparece como anexo do primeiro teste no run do Qase.
+- Limites Qase: até 32 MB por arquivo, 128 MB por request, 20 arquivos por request.
+
+### 6. Workflow GitHub Actions
+
+**Job "API Tests (Newman)":**
+
+- **Timeout do job:** 5 minutos (evita "The operation was canceled" por timeout longo).
+- **Variáveis de ambiente:**  
+  `QASE_API_TOKEN` (ou `QASE_API_TOKEN`), `QASE_PROJECT_CODE`, `QASE_RUN_TITLE_API`.  
+  **NEWMAN_BASE_URL:** `vars.API_BASE_URL` (variável do repositório) ou padrão `https://site-n1.prd-d.ws01.mobi/api`.
+- **Comando:**  
+  `npx newman run postman/Teste-Geral-API.postman_collection.json --timeout-request 10000 --global-var "baseUrl=$NEWMAN_BASE_URL" --reporters cli,json,htmlextra --reporter-json-export newman-run-report.json --reporter-htmlextra-export newman-report/newman-report.html --reporter-htmlextra-darkTheme && node scripts/newman-to-qase.js`
+- **Artifact:** upload da pasta `newman-report/` e do arquivo `newman-run-report.json` com nome `newman-report` (retenção 30 dias).
+- **Step summary:** mensagem com link para o Qase e indicação do artifact.
+
+### 7. Cypress (opcional)
+
+- **cypress.config.js:** `env.apiUrl: process.env.CYPRESS_API_URL || 'https://site-n1.prd-d.ws01.mobi/api'`.
+- **cypress/e2e/api.cy.js:** testes com `cy.request` usando `Cypress.env('apiUrl')`, `failOnStatusCode: false` e validação de status/body.
+
+### 8. .env e .env.example
+
+**.env (não versionado):**
+
+```
+QASE_TOKEN=seu_token_qase
+QASE_PROJECT_CODE=DOMINOS
+CYPRESS_BASE_URL=https://site-n1.prd-d.ws01.mobi
+CYPRESS_API_URL=https://site-n1.prd-d.ws01.mobi/api
+```
+
+**.env.example (versionado):**
+
+```
+QASE_TOKEN=your_qase_token_here
+QASE_PROJECT_CODE=DOMINOS
+CYPRESS_BASE_URL=https://site-n1.prd-d.ws01.mobi
+CYPRESS_API_URL=https://site-n1.prd-d.ws01.mobi/api
+```
+
+### 9. .gitignore
+
+```
+newman-run-report.json
+newman-report/
+```
+
+---
+
+## Referência rápida (este projeto)
 
 | Item | Caminho / Comando |
 |------|-------------------|
 | Coleção Postman (Domino's) | `postman/Dominos-Acompanhamento-API.postman_collection.json` |
-| Coleção **Teste Geral API** | `postman/Teste-Geral-API.postman_collection.json` |
-| Variáveis da coleção | `baseUrl`, `jwt` (edite no Postman ou via `-g`/`-e` no Newman) |
-| Rodar testes API (Newman) | `npm run test:api:postman` |
-| Rodar **teste geral** de API (Newman) | `npm run test:api:geral` |
-| **CI + Qase** (report JSON + HTML + envio ao Qase) | `npm run test:api:ci` |
-| Testes API no Cypress | `cypress/e2e/api.cy.js` |
-| Rodar só API no Cypress | `npx cypress run --spec "cypress/e2e/api.cy.js"` |
-| URL da API (Cypress) | `CYPRESS_API_URL` no `.env` ou `env.apiUrl` no `cypress.config.js` |
+| Coleção Teste Geral API | `postman/Teste-Geral-API.postman_collection.json` |
+| Script Qase + upload HTML | `scripts/newman-to-qase.js` |
+| Rodar testes API (Newman) | `npm run test:api:postman` ou `npm run test:api:geral` |
+| Rodar CI + Qase + relatório HTML | `npm run test:api:ci` |
+| Testes API no Cypress | `cypress/e2e/api.cy.js` — `npx cypress run --spec "cypress/e2e/api.cy.js"` |
+| Base da API (padrão) | `https://site-n1.prd-d.ws01.mobi/api` |
+| Variável no CI para outra base | `API_BASE_URL` (Settings > Variables > Actions) |
 
-**Ajuste a variável `baseUrl`** na coleção (ou crie um environment no Postman) para a URL real da sua API antes de rodar os testes.
+---
 
-### Relatório: o que cada teste faz e qual o retorno
+## Relatório: o que cada teste faz e qual o retorno
 
-#### Coleção Domino's Acompanhamento API (3 testes)
+### Coleção Domino's Acompanhamento API (3 testes)
 
 | Teste | O que faz | Retorno esperado |
 |-------|-----------|------------------|
-| **GET Recurso** | Requisição GET ao endpoint `/recurso` com query `lingua=pt`. Verifica se a API responde e, se o corpo for JSON, valida a propriedade `status`. | **200** (OK) ou **500** (erro de servidor). Se 200 e corpo JSON: objeto com propriedade `status`. Se a API devolver HTML (ex.: página de erro), o teste aceita e não falha. |
-| **POST Login** | Envia email e senha no body (JSON) para `POST /login`. Se a API retornar 200 com um JWT em `data.jwt`, o token é salvo na variável da coleção `jwt` para os próximos requests. | **200** (sucesso; opcionalmente `data.jwt`), **400** (dados inválidos), **401** (credenciais inválidas) ou **404** (rota não existe). Em 200 com JWT, o script grava `jwt` para uso em headers Bearer. |
-| **GET Autenticado (Bearer JWT)** | GET a um endpoint protegido enviando o header `Authorization: Bearer {{jwt}}`. Usa o token obtido no POST Login (ou vazio se não houve login). | **200** (autorizado, recurso retornado) ou **401** (não autorizado / token inválido ou ausente). |
+| **GET Recurso** | GET `/recurso?lingua=pt`. Se JSON, valida `status`. | 200 ou 500; se HTML, teste aceita. |
+| **POST Login** | POST `/login` com email/senha. Se 200 e `data.jwt`, salva em `jwt`. | 200, 400, 401 ou 404. |
+| **GET Autenticado (Bearer JWT)** | GET protegido com `Authorization: Bearer {{jwt}}`. | 200 ou 401. |
 
-#### Coleção Teste Geral API (8 testes)
+### Coleção Teste Geral API (8 testes)
 
 | Teste | O que faz | Retorno esperado |
 |-------|-----------|------------------|
-| **1. Health / Root** | GET na raiz da API (`/`) para health check. Verifica se a API está no ar. | **2xx** (OK) ou **404**. Se o corpo for JSON, valida que é um objeto. |
-| **2. GET Lista (query params)** | GET em `/recurso?page=1&limit=10` para listagem com paginação. | **200** (lista/objeto), **404** (rota não existe) ou **500**. Se JSON, espera objeto ou array. |
-| **3. POST Login** | POST em `/login` com email e senha. Se houver JWT em `data.jwt`, salva na variável `jwt`. | **200** (com opcional `data.jwt`), **400**, **401** ou **404**. Em 200 com JWT, grava `jwt` para os próximos requests. |
-| **4. GET Por ID** | GET em `/recurso/1` para buscar um recurso por ID. | **200** (objeto do recurso), **404** (não encontrado) ou **500**. |
-| **5. GET Autenticado (Bearer)** | GET em endpoint protegido com header `Authorization: Bearer {{jwt}}`. | **200** (autorizado) ou **401** (não autorizado). |
-| **6. POST Criar (body JSON)** | POST em `/recurso` com body `{ nome, ativo }` para criar recurso. Se a resposta trouxer `data.id`, salva em `idCriado`. | **200** ou **201** (sucesso; opcional `data.id`), **400**, **401**, **403**, **404** ou **422**. Em sucesso com `data.id`, grava `idCriado`. |
-| **7. PUT Atualizar** | PUT em `/recurso/{{idCriado}}` para atualizar o recurso criado no teste 6. | **200**, **400**, **401**, **403**, **404** ou **422**. |
-| **8. DELETE** | DELETE em `/recurso/{{idCriado}}` para remover o recurso. | **200**, **204** (sucesso sem corpo), **401**, **403** ou **404**. |
-
-No Postman, cada request tem uma **descrição** (aba de documentação do request) com resumo do que faz e do retorno; no relatório (Newman/HTML) e no guia acima está o detalhe completo.
-
-### Timeout e URL da API no CI
-
-- No CI, cada request do Newman tem **timeout de 10 segundos** (`--timeout-request 10000`). Se a API não responder (ex.: `api.exemplo.com` é só exemplo), o request falha por timeout e o job segue; o job inteiro tem **timeout de 5 minutos**, então não fica pendurado.
-- Para testar uma **API real** no GitHub Actions: em **Settings > Secrets and variables > Actions**, crie uma variável **`API_BASE_URL`** (ex.: `https://sua-api.com/v1`). O workflow usa essa variável como `baseUrl` da coleção. Se não existir, usa `https://api.exemplo.com/v1`.
-
-### Relatórios no workflow e no Qase
-
-- **GitHub Actions:** O job **API Tests (Newman)** roda na mesma workflow dos testes E2E (`teste-dominos.yml`). Gera relatório HTML (Newman HTMLExtra) e envia resultados ao Qase.
-- **Artifact:** O relatório de API fica disponível no artifact `newman-report` (download na execução do workflow).
-- **Qase:** O script `scripts/newman-to-qase.js` cria um run no projeto (ex.: DOMINOS) e envia cada request da coleção como resultado (passed/failed). Requer `QASE_API_TOKEN` e `QASE_PROJECT_CODE`.
-- **E-mail:** O e-mail de resultado do workflow menciona o relatório de API e o artifact.
+| **1. Health / Root** | GET `/` (health). | 2xx ou 404. |
+| **2. GET Lista** | GET `/recurso?page=1&limit=10`. | 200, 404 ou 500. |
+| **3. POST Login** | POST `/login`; se JWT, salva `jwt`. | 200, 400, 401 ou 404. |
+| **4. GET Por ID** | GET `/recurso/1`. | 200, 404 ou 500. |
+| **5. GET Autenticado** | GET com Bearer. | 200 ou 401. |
+| **6. POST Criar** | POST `/recurso`; se `data.id`, salva `idCriado`. | 200, 201, 400, 401, 403, 404, 422. |
+| **7. PUT Atualizar** | PUT `/recurso/{{idCriado}}`. | 200, 400, 401, 403, 404, 405, 422. |
+| **8. DELETE** | DELETE `/recurso/{{idCriado}}`. | 200, 204, 401, 403, 404, 405. |
 
 ---
 
-## 1. Estrutura de pastas
+## Detalhes técnicos para outros projetos
 
-```
-seu-projeto/
-├── postman/
-│   └── Minha-API.postman_collection.json   # Coleção com requests e scripts de teste
-├── cypress/
-│   └── e2e/
-│       └── api.cy.js                        # Testes de API com cy.request (opcional)
-└── package.json
-```
+### Coleção Postman (schema v2.1)
 
----
+- **Variáveis:** `variable`: `[{ "key": "baseUrl", "value": "https://sua-api.com/v1" }, { "key": "jwt", "value": "" }]`.
+- **Request com descrição:** no objeto `request` inclua `"description": "O que faz: ... Retorno: ..."`.
+- **Evitar falha quando a API devolve HTML:** nos Tests use `var json = null; try { json = JSON.parse(pm.response.text()); } catch (e) { }` e só valide JSON quando `json` for objeto; caso contrário, um teste neutro (ex.: `pm.expect(true).to.be.true`).
+- **Salvar JWT:** `if (json && json.data && json.data.jwt) pm.collectionVariables.set('jwt', json.data.jwt);`
+- **Múltiplos status:** `pm.expect(pm.response.code).to.be.oneOf([200, 400, 401, 404, 405]);`
 
-## 2. Coleção Postman (formato v2.1)
+### Newman
 
-### 2.1 Schema e variáveis da coleção
+- **Timeout por request:** `--timeout-request 10000` (10 s).
+- **URL dinâmica no CI:** `--global-var "baseUrl=$NEWMAN_BASE_URL"`.
+- **Export JSON (para script Qase):** `--reporter-json-export newman-run-report.json`.
+- **Export HTML (HTMLExtra):** `--reporter-htmlextra-export newman-report/newman-report.html`.
 
-Use o schema **Collection v2.1**. Variáveis permitem trocar base URL e guardar token entre requests.
+### Qase API (resumo)
 
-```json
-{
-  "info": {
-    "name": "Minha API",
-    "description": "Coleção com testes automatizados.",
-    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
-  },
-  "variable": [
-    { "key": "baseUrl", "value": "https://api.seudominio.com/v1" },
-    { "key": "jwt", "value": "" }
-  ],
-  "item": [ ]
-}
-```
+- **Criar run:** `POST https://api.qase.io/v1/run/{code}` — body: `{ "title", "description", "is_autotest": true }` — header: `Token: {QASE_API_TOKEN}`.
+- **Upload anexo:** `POST https://api.qase.io/v1/attachment/{code}` — multipart/form-data, campo `file[]` — resposta: `result[].hash`.
+- **Criar resultado:** `POST https://api.qase.io/v1/result/{code}/{runId}` — body: `{ "status": "passed"|"failed", "case": { "title": "..." }, "time_ms", "comment", "attachments": ["hash"] }`.
 
-- **baseUrl**: URL base da API (troque por ambiente).
-- **jwt**: token de autenticação; pode ser preenchido automaticamente pelo script de teste do Login.
+### Cypress
 
-### 2.2 Request GET com query params
-
-```json
-{
-  "name": "GET Recurso",
-  "request": {
-    "method": "GET",
-    "header": [
-      { "key": "Accept-Language", "value": "pt" }
-    ],
-    "url": {
-      "raw": "{{baseUrl}}/recurso?lingua=pt",
-      "host": ["{{baseUrl}}"],
-      "path": ["recurso"],
-      "query": [
-        { "key": "lingua", "value": "pt" }
-      ]
-    }
-  },
-  "event": [
-    {
-      "listen": "test",
-      "script": {
-        "exec": [
-          "pm.test('Status code is 200', function () {",
-          "    pm.response.to.have.status(200);",
-          "});",
-          "pm.test('Response has status property', function () {",
-          "    const json = pm.response.json();",
-          "    pm.expect(json).to.have.property('status');",
-          "});"
-        ],
-        "type": "text/javascript"
-      }
-    }
-  ]
-}
-```
-
-### 2.3 Request POST com body JSON
-
-```json
-{
-  "name": "POST Login",
-  "request": {
-    "method": "POST",
-    "header": [
-      { "key": "Content-Type", "value": "application/json" }
-    ],
-    "body": {
-      "mode": "raw",
-      "raw": "{\n  \"email\": \"teste@exemplo.com\",\n  \"senha\": \"123456\"\n}"
-    },
-    "url": "{{baseUrl}}/login"
-  },
-  "event": [
-    {
-      "listen": "test",
-      "script": {
-        "exec": [
-          "pm.test('Status is 200, 400 or 401', function () {",
-          "    pm.expect(pm.response.code).to.be.oneOf([200, 400, 401]);",
-          "});",
-          "const json = pm.response.json();",
-          "if (pm.response.code === 200 && json.data && json.data.jwt) {",
-          "    pm.collectionVariables.set('jwt', json.data.jwt);",
-          "    pm.test('JWT salvo na variável jwt', function () {",
-          "        pm.expect(json.data.jwt).to.be.a('string');",
-          "    });",
-          "}"
-        ],
-        "type": "text/javascript"
-      }
-    }
-  ]
-}
-```
-
-- **pm.response.code**: código HTTP.
-- **pm.response.json()**: corpo da resposta.
-- **pm.collectionVariables.set('jwt', valor)**: salva o token para os próximos requests (ex.: `Authorization: Bearer {{jwt}}`).
-
-### 2.4 Request autenticado (Bearer JWT)
-
-No request, use o header:
-
-```json
-{ "key": "Authorization", "value": "Bearer {{jwt}}" }
-```
-
-No **Tests**:
-
-```javascript
-pm.test('Status is 200 or 401', function () {
-    pm.expect(pm.response.code).to.be.oneOf([200, 401]);
-});
-```
-
-### 2.5 Aceitar múltiplos códigos (500, 404 etc.)
-
-Quando a API pode retornar erro de servidor ou rota inexistente, não exija só 200:
-
-```javascript
-// Ex.: GET que pode retornar 500
-pm.test('Status is 200 or 500', function () {
-    pm.expect(pm.response.code).to.be.oneOf([200, 500]);
-});
-
-// Ex.: POST login que pode retornar 404 (rota não existe no servidor)
-pm.test('Status is 200, 400, 401 or 404', function () {
-    pm.expect(pm.response.code).to.be.oneOf([200, 400, 401, 404]);
-});
-```
-
-### 2.6 E-mail aleatório no body (evitar duplicado)
-
-No body do request de cadastro use a variável dinâmica do Postman:
-
-```json
-"email": "usuario.{{$randomInt}}@teste.com"
-```
+- **env.apiUrl** em `cypress.config.js`; ler com `Cypress.env('apiUrl')`.
+- **failOnStatusCode: false** em `cy.request` e validar `res.status` com `expect(res.status).to.be.oneOf([...])`.
 
 ---
 
-## 3. Newman (rodar coleção no terminal)
+## Checklist para outro projeto
 
-### 3.1 Instalação
+1. [ ] Criar pasta `postman/` e coleção(ões) em schema v2.1 com variáveis `baseUrl`, `jwt` (e `idCriado` se CRUD).
+2. [ ] Em cada request: Tests com `JSON.parse(pm.response.text())` em try/catch quando a API pode devolver HTML; aceitar 404, 500, 405 etc. conforme a API; adicionar `description` (o que faz + retorno).
+3. [ ] Instalar `newman`, `newman-reporter-htmlextra`, `dotenv`; script `test:api:ci` com `--timeout-request 10000`, reporters json + htmlextra, e `&& node scripts/newman-to-qase.js`.
+4. [ ] Criar `scripts/newman-to-qase.js`: carregar `.env`, ler report JSON, criar run no Qase, fazer upload do relatório HTML (form-data, `file[]`), enviar resultados com `attachments: [hash]` no primeiro.
+5. [ ] Workflow: job com timeout 5 min, `NEWMAN_BASE_URL` (vars.API_BASE_URL ou padrão), comando newman com `--global-var "baseUrl=$NEWMAN_BASE_URL"`, upload do artifact `newman-report` + `newman-run-report.json`.
+6. [ ] .env.example com QASE_TOKEN, QASE_PROJECT_CODE, CYPRESS_API_URL; .gitignore com newman-run-report.json e newman-report/.
+7. [ ] (Opcional) Cypress: env.apiUrl no config e spec api.cy.js com cy.request.
 
-No projeto (onde está o `package.json`):
-
-```bash
-npm install newman --save-dev
-```
-
-Versão usada: `^6.2.0` (evite `^6.3.0` se não existir no npm).
-
-### 3.2 Script no package.json
-
-Se a coleção está na pasta `postman/` na **raiz do repositório** e o `package.json` está numa subpasta (ex.: `app/`):
-
-```json
-"scripts": {
-  "test:api:postman": "newman run ../postman/Minha-API.postman_collection.json"
-}
-```
-
-Se a coleção está no **mesmo nível** do `package.json`:
-
-```json
-"test:api:postman": "newman run postman/Minha-API.postman_collection.json"
-```
-
-### 3.3 Executar
-
-Na pasta onde está o `package.json`:
-
-```bash
-npm run test:api:postman
-```
-
-O Newman executa todos os requests da coleção e roda os scripts da aba **Tests** de cada um. O resultado (pass/fail por assertion) aparece no terminal.
-
-### 3.4 Relatório HTML (opcional)
-
-```bash
-npm install newman-reporter-htmlextra --save-dev
-```
-
-```bash
-newman run postman/Minha-API.postman_collection.json -r htmlextra --reporter-htmlextra-export report.html
-```
-
----
-
-## 4. Testes de API no Cypress (cy.request)
-
-Para testar a mesma API dentro do Cypress (sem Postman/Newman).
-
-### 4.1 URL da API no cypress.config.js
-
-Em `env`, expose a URL base (e opcionalmente via `.env`):
-
-```javascript
-require('dotenv').config();
-
-module.exports = defineConfig({
-  e2e: {
-    // ...
-  },
-  env: {
-    apiUrl: process.env.CYPRESS_API_URL || 'https://api.seudominio.com/v1'
-  }
-});
-```
-
-No `.env` (opcional):
-
-```
-CYPRESS_API_URL=https://api.seudominio.com/v1
-```
-
-### 4.2 Spec de API (cypress/e2e/api.cy.js)
-
-```javascript
-const API_URL = Cypress.env('apiUrl') || 'https://api.seudominio.com/v1';
-
-const headers = {
-  'Content-Type': 'application/json',
-  'Accept-Language': 'pt',
-};
-
-describe('API', () => {
-  it('GET /recurso retorna 200 e dados', () => {
-    cy.request({
-      method: 'GET',
-      url: `${API_URL}/recurso`,
-      qs: { lingua: 'pt' },
-      headers,
-      failOnStatusCode: false,
-    }).then((res) => {
-      expect(res.status).to.eq(200);
-      expect(res.body).to.have.property('status');
-    });
-  });
-
-  it('POST /login com credenciais inválidas retorna erro esperado', () => {
-    cy.request({
-      method: 'POST',
-      url: `${API_URL}/login`,
-      headers,
-      body: { email: 'naoexiste@teste.com', senha: 'errada' },
-      failOnStatusCode: false,
-    }).then((res) => {
-      expect(res.status).to.be.oneOf([200, 400, 401]);
-      expect(res.body).to.be.an('object');
-    });
-  });
-});
-```
-
-- **failOnStatusCode: false**: Cypress não falha o teste quando a API retorna 4xx/5xx; você controla com `expect(res.status)`.
-
-### 4.3 Rodar só os testes de API
-
-```bash
-npx cypress run --spec "cypress/e2e/api.cy.js"
-```
-
----
-
-## 5. Resumo rápido
-
-| O que | Onde | Comando / Ação |
-|-------|------|----------------|
-| **Coleção Postman** | `postman/*.postman_collection.json` | Import no Postman ou usar com Newman |
-| **Variáveis** | Na coleção: `baseUrl`, `jwt` | `{{baseUrl}}`, `{{jwt}}` nos requests |
-| **Testes no Postman** | Aba **Tests** de cada request | `pm.test()`, `pm.expect()`, `pm.response`, `pm.collectionVariables.set()` |
-| **Newman** | `package.json` script | `npm run test:api:postman` |
-| **Cypress API** | `cypress.config.js` → `env.apiUrl` + `cypress/e2e/api.cy.js` | `npx cypress run --spec "cypress/e2e/api.cy.js"` |
-
----
-
-## 6. Checklist para outro projeto
-
-1. [ ] Criar pasta `postman/` e arquivo `*.postman_collection.json` (schema v2.1).
-2. [ ] Definir variáveis `baseUrl` e (se houver login) `jwt`.
-3. [ ] Adicionar requests (GET/POST/etc.) e em cada um a seção `event` → `listen: "test"` com `pm.test` / `pm.expect`.
-4. [ ] Se login retorna JWT: no Test do Login, usar `pm.collectionVariables.set('jwt', json.data.jwt)`.
-5. [ ] Requests que podem retornar 500/404: usar `pm.expect(pm.response.code).to.be.oneOf([200, 500])` (ou 404) em vez de só 200.
-6. [ ] Instalar Newman: `npm install newman --save-dev`.
-7. [ ] Script no `package.json`: `"test:api:postman": "newman run caminho/para/coleção.json"`.
-8. [ ] (Opcional) Cypress: `env.apiUrl` no `cypress.config.js` e spec `api.cy.js` com `cy.request`.
+Com isso você replica neste ou em outro repositório: testes de API com Postman/Newman, relatório HTML, envio dos resultados ao Qase e **anexo do relatório HTML no run do Qase**.

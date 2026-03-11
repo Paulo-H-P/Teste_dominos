@@ -5,7 +5,7 @@
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "variable": [
-    { "key": "baseUrl", "value": "https://api.exemplo.com/v1" },
+    { "key": "baseUrl", "value": "https://site-n1.prd-d.ws01.mobi/api" },
     { "key": "jwt", "value": "" },
     { "key": "idCriado", "value": "" }
   ],
@@ -206,7 +206,7 @@
     {
       "name": "7. PUT Atualizar",
       "request": {
-        "description": "O que faz: PUT /recurso/{{idCriado}} para atualizar recurso. Retorno: 200, 400, 401, 403, 404 ou 422.",
+        "description": "O que faz: PUT /recurso/{{idCriado}} para atualizar recurso. Retorno: 200, 400, 401, 403, 404, 405 (method not allowed) ou 422.",
         "method": "PUT",
         "header": [
           { "key": "Content-Type", "value": "application/json" },
@@ -223,8 +223,8 @@
           "listen": "test",
           "script": {
             "exec": [
-              "pm.test('Status 200, 400, 401, 403, 404 ou 422', function () {",
-              "    pm.expect(pm.response.code).to.be.oneOf([200, 400, 401, 403, 404, 422]);",
+              "pm.test('Status 200, 400, 401, 403, 404, 405 ou 422', function () {",
+              "    pm.expect(pm.response.code).to.be.oneOf([200, 400, 401, 403, 404, 405, 422]);",
               "});",
               "var json = null;",
               "try { json = JSON.parse(pm.response.text()); } catch (e) { }",
@@ -240,7 +240,7 @@
     {
       "name": "8. DELETE",
       "request": {
-        "description": "O que faz: DELETE /recurso/{{idCriado}} para remover recurso. Retorno: 200, 204 (sem corpo), 401, 403 ou 404.",
+        "description": "O que faz: DELETE /recurso/{{idCriado}} para remover recurso. Retorno: 200, 204 (sem corpo), 401, 403, 404 ou 405 (method not allowed).",
         "method": "DELETE",
         "header": [{ "key": "Authorization", "value": "Bearer {{jwt}}" }],
         "url": "{{baseUrl}}/recurso/{{idCriado}}"
@@ -250,8 +250,8 @@
           "listen": "test",
           "script": {
             "exec": [
-              "pm.test('Status 200, 204, 401, 403 ou 404', function () {",
-              "    pm.expect(pm.response.code).to.be.oneOf([200, 204, 401, 403, 404]);",
+              "pm.test('Status 200, 204, 401, 403, 404 ou 405', function () {",
+              "    pm.expect(pm.response.code).to.be.oneOf([200, 204, 401, 403, 404, 405]);",
               "});"
             ],
             "type": "text/javascript"

@@ -24,7 +24,7 @@
     "allure-commandline": "^2.36.0",
     "allure-cypress": "^3.4.5",
     "cross-env": "^10.1.0",
-    "cypress": "^13.17.0",
+    "cypress": "^15.11.0",
     "cypress-multi-reporters": "^2.0.5",
     "cypress-qase-reporter": "^3.1.2",
     "dotenv": "^17.2.3",
